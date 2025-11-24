@@ -36,7 +36,7 @@ services:
   # Provides login, tokens, user management, and WebAuthn
   # ------------------------------------
   keycloak:
-    image: quay.io/keycloak/keycloak:25.0.5
+    image: quay.io/keycloak/keycloak:26.3.0
     container_name: keycloak
     environment:
       # Database connection info (connects to keycloak_db)
@@ -51,7 +51,7 @@ services:
     ports:
       - "9090:8080"
     command:
-      - start-dev # Dev mode (fast startup, persistent data)
+      - start-dev # Dev mode (fast startup)
     depends_on:
       - keycloak_db
     volumes:
