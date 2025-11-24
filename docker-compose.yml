@@ -70,7 +70,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - KEYCLOAK_ISSUER_URI=http://keycloak:8080/realms/HealthRealm # it defines where our backend should look to validate JWT tokens issued by Keycloak
+      - KEYCLOAK_ISSUER_URI=http://keycloak:8080/realms/health-realm # it defines where our backend should look to validate JWT tokens issued by Keycloak
     depends_on:
       - db
       - keycloak
