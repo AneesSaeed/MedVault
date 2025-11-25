@@ -11,7 +11,7 @@ import { NgModule, APP_INITIALIZER } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 
 import { KeycloakAngularModule, KeycloakService } from 'keycloak-angular';
-import { initializeKeycloak } from './keycloak-init.factory';
+import { initializeKeycloak } from './core/keycloak/keycloak-init.factory';
 
 import { AppComponent } from './app.component';
 import { HeaderComponent } from './header/header.component';

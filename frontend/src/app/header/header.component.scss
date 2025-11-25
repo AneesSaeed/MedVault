@@ -1,0 +1,44 @@
+@use '../../styles/variables' as v;
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background-color: v.$color-primary;
+  color: v.$color-on-primary;
+  box-shadow: v.$shadow-header;
+
+  &__brand {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 8px 14px;
+    border-radius: 8px;
+  }
+
+  &__button {
+    background-color: v.$color-on-primary;
+    color: v.$color-primary-dark;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      background-color: v.$color-hover;
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+}

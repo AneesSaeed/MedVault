@@ -1,4 +1,8 @@
 <header class="header">
-  <span>Welcome {{ username }}</span>
-  <button (click)="logout()">Logout</button>
+  <div class="header__brand">Secure Medical Records</div>
+
+  <div class="header__right">
+    <span>{{ username }}</span>
+    <button class="header__button" (click)="logout()">Logout</button>
+  </div>
 </header>
