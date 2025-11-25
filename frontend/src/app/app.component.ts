@@ -17,6 +17,11 @@ export class AppComponent {
 
   constructor(public keycloak: KeycloakService) {}
 
+  /**
+   * Extracts the username from the Keycloak token.
+   *
+   * tokenParsed is a dynamic object, so we access the field using ['preferred_username'].
+   */
   get username() {
     return this.keycloak.getKeycloakInstance().tokenParsed?.['preferred_username']
   }
