@@ -14,14 +14,19 @@ import { KeycloakAngularModule, KeycloakService } from 'keycloak-angular';
 import { initializeKeycloak } from './keycloak-init.factory';
 
 import { AppComponent } from './app.component';
+import { HeaderComponent } from './header/header.component';
+import { HomeComponent } from './home/home.component';
+import { AppRoutingModule } from './app-routing.module';
 
 @NgModule({
   declarations: [
-    AppComponent // Main application UI component
+    AppComponent, // Main application UI component
+    HeaderComponent, HomeComponent
   ],
   imports: [
     BrowserModule,
-    KeycloakAngularModule  // Enables Keycloak features in Angular
+    KeycloakAngularModule,  // Enables Keycloak features in Angular
+    AppRoutingModule
   ],
   providers: [
     {
