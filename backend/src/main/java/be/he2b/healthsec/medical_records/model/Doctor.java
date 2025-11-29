@@ -20,8 +20,10 @@ public class Doctor {
     @JoinColumn(name = "id")
     private User user;
 
-    @Column(name = "medical_organisation")
-    private String medicalOrganization;
+    @Lob
+    @Column(name = "medical_organisation_enc")
+    private byte[] medicalOrganizationEnc;
+
 
     // Un doctor a plusieurs liens PatientDoctor
     @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, orphanRemoval = true)

@@ -10,6 +10,7 @@ import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
@@ -42,6 +43,15 @@ public class PatientDoctor {
 
     @Column(name = "appointed_at", nullable = true)
     private Instant appointedAt;
+
+    /** 
+     * Clé symétrique chiffrée avec la clé publique du docteur.
+     * Cette version est destinée uniquement à ce docteur.
+     */
+    @Lob
+    @Column(name = "encrypted_sym_key_for_doctor")
+    private byte[] encryptedSymmetricKeyForDoctor;
+
 }
 
 

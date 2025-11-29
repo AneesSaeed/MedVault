@@ -23,18 +23,25 @@ public class User {
     @Column(name = "keycloak_id", unique = true, nullable = false)
     private String keycloakId; // id fourni par Keycloak
 
-    @Column(name = "first_name")
-    private String firstName;
+    @Lob
+    @Column(name = "first_name_enc")
+    private byte[] firstNameEnc;
 
-    @Column(name = "last_name")
-    private String lastName;
+    @Lob
+    @Column(name = "last_name_enc")
+    private byte[] lastNameEnc;
+
+    @Lob
+    @Column(name = "email_enc")
+    private byte[] emailEnc;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private UserType type;
+    @Column(name = "user_type_role", nullable = false)
+    private UserType role; // DOCTOR ou PATIENT
 
-    @Column(unique = true, nullable = false)
-    private String email;
+    @Lob
+    @Column(name = "user_type_enc")
+    private byte[] userTypeEnc;
 
     @Lob
     @Column(name = "public_key")

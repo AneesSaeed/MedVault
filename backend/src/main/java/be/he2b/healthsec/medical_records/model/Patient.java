@@ -25,8 +25,10 @@ public class Patient {
     @JoinColumn(name = "id")
     private User user;
 
-    @Column(name = "date_of_birth")
-    private LocalDate dateOfBirth;
+    @Lob
+    @Column(name = "dob_enc", nullable = false)
+    private byte[] dateOfBirthEnc;
+
 
     // Un patient a plusieurs liens PatientDoctor
     @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)

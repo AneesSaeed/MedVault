@@ -28,16 +28,17 @@ public class MedicalFile {
     @JoinColumn(name = "medical_record_id", nullable = false)
     private MedicalRecord medicalRecord;
 
-    @Column(name = "file_name", nullable = false)
-    private String fileName;
-
-    @Column(name = "upload_date", nullable = false)
-    private Instant uploadDate;
+    @Lob
+    @Column(name = "file_name_enc")
+    private byte[] fileNameEnc;
 
     @Lob
-    @Column(name = "content", nullable = false)
-    private byte[] content; // fichier stocké en base, ou juste un chemin si fichier stocké ailleurs
+    @Column(name = "upload_date_enc")
+    private byte[] uploadDateEnc;
 
-    // Autres champs possibles : mimeType, taille, hash pour intégrité
+    @Lob
+    @Column(name = "content_enc")
+    private byte[] contentEnc;
+
 }
 
