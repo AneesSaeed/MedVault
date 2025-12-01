@@ -1,7 +1,6 @@
 package be.he2b.healthsec.medical_records.model;
 
 import lombok.*;
-import org.hibernate.annotations.GenericGenerator;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -14,7 +13,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class User {
-
     @Id
     @GeneratedValue
     @Column(columnDefinition = "uuid", updatable = false, nullable = false)

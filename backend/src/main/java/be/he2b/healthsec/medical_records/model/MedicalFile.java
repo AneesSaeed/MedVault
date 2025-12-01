@@ -1,7 +1,6 @@
 package be.he2b.healthsec.medical_records.model;
 
 import lombok.*;
-import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.persistence.Column;

@@ -26,6 +26,7 @@ public class Doctor {
 
 
     // Un doctor a plusieurs liens PatientDoctor
+    @Builder.Default
     @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PatientDoctor> patientLinks = new HashSet<>();
 }

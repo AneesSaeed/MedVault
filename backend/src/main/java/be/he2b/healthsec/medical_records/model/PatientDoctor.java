@@ -1,11 +1,8 @@
 package be.he2b.healthsec.medical_records.model;
 
-import java.io.Serializable;
 import java.time.Instant;
-import java.util.UUID;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

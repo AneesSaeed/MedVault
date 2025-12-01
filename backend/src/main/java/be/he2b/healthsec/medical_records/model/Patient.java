@@ -2,7 +2,6 @@ package be.he2b.healthsec.medical_records.model;
 
 import lombok.*;
 import jakarta.persistence.*;
-import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -31,10 +30,10 @@ public class Patient {
 
 
     // Un patient a plusieurs liens PatientDoctor
+    @Builder.Default
     @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PatientDoctor> doctorLinks = new HashSet<>();
 
-    
     @OneToOne(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
     private MedicalRecord medicalRecord;
 }
