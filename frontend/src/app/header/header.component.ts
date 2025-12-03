@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { KeycloakService } from 'keycloak-angular';
+import { AuthService } from '../core/services/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -8,18 +8,29 @@ import { KeycloakService } from 'keycloak-angular';
 })
 export class HeaderComponent {
 
-  constructor(public keycloak: KeycloakService) {}
+  constructor(public auth: AuthService) {}
 
-  /**
-   * Extracts the username from the Keycloak token.
-   *
-   * tokenParsed is a dynamic object, so we access the field using ['preferred_username'].
-   */
   get username() {
-    return this.keycloak.getKeycloakInstance().tokenParsed?.['preferred_username']
+    return this.auth.username;
+  }
+
+  get email() {
+    return this.auth.email;
+  }
+
+  get firstName() {
+    return this.auth.firstName;
+  }
+
+  get lastName() {
+    return this.auth.lastName;
+  }
+
+  get role(){
+    return "Doctor"
   }
 
   logout() {
-    this.keycloak.logout('http://localhost:4200');
+    this.auth.logout();
   }
 }

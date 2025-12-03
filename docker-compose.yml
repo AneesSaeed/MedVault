@@ -1,7 +1,4 @@
 services:
-  # -------------------------------
-  # PostgreSQL database for our app
-  # -------------------------------
   db:
     image: postgres:16
     container_name: postgres_app
@@ -16,10 +13,7 @@ services:
       - db_data:/var/lib/postgresql/data
     restart: always
 
-  # ------------------------------------
-  # Keycloak authentication/authorization server
-  # Provides login, tokens, user management, and WebAuthn
-  # ------------------------------------
+  
   keycloak:
     image: quay.io/keycloak/keycloak:26.3.0
     container_name: keycloak
@@ -36,10 +30,7 @@ services:
     - ./keycloak-config:/opt/keycloak/data/import
     restart: always
 
-  # ------------------------------------
-  # Spring Boot backend (medical-records app)
-  # Connects to PostgreSQL + authenticates via Keycloak
-  # ------------------------------------
+
   backend:
     build: ./backend
     container_name: spring_backend
