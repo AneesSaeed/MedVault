@@ -1,14 +1,20 @@
 package be.he2b.healthsec.medical_records.controller;
 
+import java.util.Map;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.method.P;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import be.he2b.healthsec.medical_records.dto.CreateDoctorDTO;
+import be.he2b.healthsec.medical_records.dto.CreatePatientDTO;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.service.UserService;
 
@@ -19,28 +25,79 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    // --------------------------------------------------------------
+    //  Check if the current authenticated Keycloak user exists
+    // --------------------------------------------------------------
+    @GetMapping("/user/exists")
+    public ResponseEntity<Boolean> userExists(@AuthenticationPrincipal Jwt jwt) {
+        String keycloakId = jwt.getSubject();
+        boolean exists = userService.existsByKeycloakId(keycloakId);
+        return ResponseEntity.ok(exists);
+    }
+
+    // --------------------------------------------------------------
+    //  Get user’s info (after onboarding)
+    // --------------------------------------------------------------
+    @GetMapping("/user/me")
+    public ResponseEntity<?> userMe(@AuthenticationPrincipal Jwt jwt) {
+
+        String keycloakId = jwt.getSubject();
+
+        Optional<User> userOpt = userService.findByKeycloakId(keycloakId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.ok(null);
+        }
+
+        User user = userOpt.get();
+
+        return ResponseEntity.ok(
+            Map.of(
+                "userId", user.getId(),
+                "role", user.getRole().name()
+            )
+        );
+    }
+
+    // --------------------------------------------------------------
+    //  Create Patient (first-time onboarding)
+    // --------------------------------------------------------------
     @PostMapping("/patient")
-    public ResponseEntity<String> createPatient(
-            @RequestBody User user,
-            @RequestParam String dateOfBirthEncBase64) {
+    public ResponseEntity<?> createPatient(@RequestBody CreatePatientDTO dto) {
         try {
-            String message = userService.createPatient(user, dateOfBirthEncBase64);
-            return ResponseEntity.ok(message);
+            String msg = userService.createPatient(
+                dto.getUser(),
+                dto.getDateOfBirthEncBase64()
+            );
+
+            return ResponseEntity.ok(
+                Map.of("message", msg)
+            );
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
         }
     }
 
+
+    // --------------------------------------------------------------
+    //  Create Doctor (first-time onboarding)
+    // --------------------------------------------------------------
     @PostMapping("/doctor")
-    public ResponseEntity<String> createDoctor(
-            @RequestBody User user,
-            @RequestParam String medicalOrganizationEncBase64) {
+    public ResponseEntity<?> createDoctor(@RequestBody CreateDoctorDTO dto) {
         try {
-            String message = userService.createDoctor(user, medicalOrganizationEncBase64);
-            return ResponseEntity.ok(message);
+            String msg = userService.createDoctor(
+                dto.getUser(),
+                dto.getMedicalOrganizationEncBase64()
+            );
+
+            return ResponseEntity.ok(
+                Map.of("message", msg)
+            );
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
         }
     }
-
 }

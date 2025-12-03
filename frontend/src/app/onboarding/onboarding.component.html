@@ -1,0 +1,69 @@
+<div class="backdrop"></div>
+
+<div class="modal">
+  <h2 class="title">Complete Your Registration</h2>
+
+  <!-- Prefilled identity -->
+  <div class="identity-grid">
+    <div class="field">
+      <label>First name</label>
+      <input type="text" [value]="auth.firstName" disabled>
+    </div>
+
+    <div class="field">
+      <label>Last name</label>
+      <input type="text" [value]="auth.lastName" disabled>
+    </div>
+
+    <div class="field">
+      <label>Username</label>
+      <input type="text" [value]="auth.username" disabled>
+    </div>
+
+    <div class="field">
+      <label>Email</label>
+      <input type="email" [value]="auth.email" disabled>
+    </div>
+  </div>
+
+  <!-- Always visible role selection -->
+  <div class="role-select">
+    <p class="subtitle">Select your role</p>
+
+    <div class="role-buttons">
+      <button
+        class="btn patient"
+        [class.selected]="role === 'PATIENT'"
+        (click)="selectRole('PATIENT')">
+        Patient
+      </button>
+
+      <button
+        class="btn doctor"
+        [class.selected]="role === 'DOCTOR'"
+        (click)="selectRole('DOCTOR')">
+        Doctor
+      </button>
+    </div>
+  </div>
+
+  <!-- Patient or Doctor form displayed below -->
+  <div *ngIf="role" class="extra-form">
+    <ng-container *ngIf="role === 'PATIENT'">
+      <label>Date of birth</label>
+      <input type="date" [(ngModel)]="dateOfBirth">
+    </ng-container>
+
+    <ng-container *ngIf="role === 'DOCTOR'">
+      <label>Medical organisation</label>
+      <input type="text" [(ngModel)]="medicalOrg" placeholder="Hospital, Clinic...">
+    </ng-container>
+
+    <button
+    class="submit-btn"
+    (click)="submit()"
+    [disabled]="!isFormValid()">
+      Finish
+    </button>
+  </div>
+</div>

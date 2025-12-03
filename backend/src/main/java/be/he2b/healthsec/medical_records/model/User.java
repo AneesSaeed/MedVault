@@ -1,7 +1,25 @@
 package be.he2b.healthsec.medical_records.model;
 
-import lombok.*;
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -13,6 +31,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class User {
+    
     @Id
     @GeneratedValue
     @Column(columnDefinition = "uuid", updatable = false, nullable = false)
@@ -21,27 +40,22 @@ public class User {
     @Column(name = "keycloak_id", unique = true, nullable = false)
     private String keycloakId; // id fourni par Keycloak
 
-    @Lob
-    @Column(name = "first_name_enc")
+    @Column(name = "first_name_enc", columnDefinition = "bytea")
     private byte[] firstNameEnc;
 
-    @Lob
-    @Column(name = "last_name_enc")
+    @Column(name = "last_name_enc", columnDefinition = "bytea")
     private byte[] lastNameEnc;
 
-    @Lob
-    @Column(name = "email_enc")
+    @Column(name = "email_enc", columnDefinition = "bytea")
     private byte[] emailEnc;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "user_type_role", nullable = false)
     private UserType role; // DOCTOR ou PATIENT
 
-    @Lob
-    @Column(name = "user_type_enc")
+    @Column(name = "user_type_enc", columnDefinition = "bytea")
     private byte[] userTypeEnc;
 
-    @Lob
     @Column(name = "public_key")
     private String publicKey; // clé publique PEM/base64
 

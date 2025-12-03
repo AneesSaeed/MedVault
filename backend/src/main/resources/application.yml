@@ -5,9 +5,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:5432/${POSTGRES_DB}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${POSTGRES_DB:mydb}
+    username: ${POSTGRES_USER:app}
+    password: ${POSTGRES_PASSWORD:app}
 
   jpa:
     hibernate:
@@ -19,4 +19,4 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI} # Trust JWT access tokens that come from this Keycloak realm.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:9090/realms/health-realm} # Trust JWT access tokens that come from this Keycloak realm.

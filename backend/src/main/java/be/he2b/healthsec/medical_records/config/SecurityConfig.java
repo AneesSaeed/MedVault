@@ -13,11 +13,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .cors(cors -> {}) // Apply the WebMvcConfigurer CORS rules
             .csrf(csrf -> csrf.disable())  // CSRF is disabled because the application is a stateless REST API secured via Authorization headers rather than cookies.
             .authorizeHttpRequests(auth -> auth // This defines which endpoints require which permissions.
                 .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/api/patient/**").hasRole("PATIENT")
-                .requestMatchers("/api/doctor/**").hasRole("DOCTOR")
+                .requestMatchers("/api/user/**").authenticated()      // onboarding endpoints
+                .requestMatchers("/api/patient/**").authenticated()
+                .requestMatchers("/api/doctor/**").authenticated()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2 // This tells Spring that your server is a resource server using JWTs for authentication

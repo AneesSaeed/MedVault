@@ -2,6 +2,7 @@ package be.he2b.healthsec.medical_records.service;
 
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
@@ -20,34 +21,57 @@ public class UserService {
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
 
-    public String createDoctor(User user, String medicalOrganizationEncBase64) {
+    public boolean existsByKeycloakId(String keycloakId) {
+        return userRepository.existsByKeycloakId(keycloakId);
+    }
+
+    public Optional<User> findByKeycloakId(String keycloakId) {
+        return userRepository.findByKeycloakId(keycloakId);
+    }
+
+    
+    public String createPatient(User user, String dateOfBirthEncBase64) {
+        
+        // Prevent duplicates
+        Optional<User> existing = userRepository.findByKeycloakId(user.getKeycloakId());
+        if (existing.isPresent()) {
+            throw new IllegalArgumentException("User already exists");
+        }
+
         user.setCreatedAt(Instant.now());
         User savedUser = userRepository.save(user);
+        
+        byte[] dateOfBirthEnc = Base64.getDecoder().decode(dateOfBirthEncBase64);
+        
+        Patient patient = Patient.builder()
+            .user(savedUser)
+            .dateOfBirthEnc(dateOfBirthEnc)
+            .build();
+        
+        patientRepository.save(patient);
+        return "Patient created with ID: " + savedUser.getId();
+    }
+    
+    public String createDoctor(User user, String medicalOrganizationEncBase64) {
+        
+        // Prevent duplicates
+        Optional<User> existing = userRepository.findByKeycloakId(user.getKeycloakId());
+        if (existing.isPresent()) {
+            throw new IllegalArgumentException("User already exists");
+        }
 
+        user.setCreatedAt(Instant.now());
+        User savedUser = userRepository.save(user);
+    
         byte[] medicalOrganizationEnc = Base64.getDecoder().decode(medicalOrganizationEncBase64);
-
+    
         Doctor doctor = Doctor.builder()
                 .user(savedUser)
                 .medicalOrganizationEnc(medicalOrganizationEnc)
                 .build();
-
+    
         doctorRepository.save(doctor);
-
+    
         return "Doctor created with ID: " + savedUser.getId();
-    }
-
-    public String createPatient(User user, String dateOfBirthEncBase64) {
-        user.setCreatedAt(Instant.now());
-        User savedUser = userRepository.save(user);
-
-        byte[] dateOfBirthEnc = Base64.getDecoder().decode(dateOfBirthEncBase64);
-
-        Patient patient = Patient.builder()
-                .user(savedUser)
-                .dateOfBirthEnc(dateOfBirthEnc)
-                .build();
-
-        patientRepository.save(patient);
-        return "Patient created with ID: " + savedUser.getId();
     }
 }

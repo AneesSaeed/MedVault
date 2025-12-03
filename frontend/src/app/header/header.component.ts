@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { AuthService } from '../core/services/auth.service';
+import { UserContextService } from '../core/services/user-context.service';
 
 @Component({
   selector: 'app-header',
@@ -8,7 +9,10 @@ import { AuthService } from '../core/services/auth.service';
 })
 export class HeaderComponent {
 
-  constructor(public auth: AuthService) {}
+  constructor(
+    public auth: AuthService,
+    public userContext: UserContextService
+  ) {}
 
   get username() {
     return this.auth.username;
@@ -26,8 +30,8 @@ export class HeaderComponent {
     return this.auth.lastName;
   }
 
-  get role(){
-    return "Doctor"
+  get role() {
+    return this.userContext.role ?? 'Loading...';
   }
 
   logout() {

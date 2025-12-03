@@ -1,10 +1,24 @@
 package be.he2b.healthsec.medical_records.model;
 
-import lombok.*;
-import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "doctors")
@@ -20,8 +34,7 @@ public class Doctor {
     @JoinColumn(name = "id")
     private User user;
 
-    @Lob
-    @Column(name = "medical_organisation_enc")
+    @Column(name = "medical_organisation_enc", columnDefinition = "bytea")
     private byte[] medicalOrganizationEnc;
 
 

@@ -15,7 +15,10 @@ public class WebConfig {
             public void addCorsMappings(CorsRegistry registry) { // CorsRegistry is a helper object for defining which origins, methods, or headers are allowed in CORS.
                 registry.addMapping("/api/**")
                 .allowedOrigins("http://localhost:4200")
-                .allowedMethods("GET", "POST", "PUT", "DELETE");
+                .allowedMethods("GET", "POST", "PUT", "DELETE")
+                .allowedHeaders("*")
+                .exposedHeaders("*")
+                .allowCredentials(true);;
             }
         };
     }

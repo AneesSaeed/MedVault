@@ -9,6 +9,7 @@
 
 import { NgModule, APP_INITIALIZER } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
 
 import { KeycloakAngularModule, KeycloakService } from 'keycloak-angular';
 import { initializeKeycloak } from './core/keycloak/keycloak-init.factory';
@@ -17,16 +18,22 @@ import { AppComponent } from './app.component';
 import { HeaderComponent } from './header/header.component';
 import { HomeComponent } from './home/home.component';
 import { AppRoutingModule } from './app-routing.module';
+import { OnboardingComponent } from './onboarding/onboarding.component';
+import { HttpClientModule } from '@angular/common/http';
 
 @NgModule({
   declarations: [
     AppComponent, // Main application UI component
-    HeaderComponent, HomeComponent
+    HeaderComponent,
+    HomeComponent,
+    OnboardingComponent
   ],
   imports: [
     BrowserModule,
+    HttpClientModule,
     KeycloakAngularModule,  // Enables Keycloak features in Angular
-    AppRoutingModule
+    AppRoutingModule,
+    FormsModule
   ],
   providers: [
     {
