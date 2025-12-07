@@ -26,6 +26,7 @@ services:
     command:
       - start-dev # Dev mode (fast startup)
       - --import-realm
+      - --hostname=http://localhost:9090
     volumes:
     - ./keycloak-config:/opt/keycloak/data/import
     restart: always
@@ -39,13 +40,38 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - KEYCLOAK_ISSUER_URI=http://keycloak:8080/realms/health-realm # it defines where our backend should look to validate JWT tokens issued by Keycloak
+      - KEYCLOAK_ISSUER_URI=http://localhost:9090/realms/health-realm # it defines where our backend should look to validate JWT tokens issued by Keycloak
+      - KEYCLOAK_JWKS_URI=http://keycloak:8080/realms/health-realm/protocol/openid-connect/certs
     depends_on:
       - db
       - keycloak
     ports:
       - "8081:8081"
-      
+
+  angular:
+    image: node:20
+    container_name: angular_frontend
+  
+    working_dir: /usr/src/app
+    
+    ports:
+      - "4200:4200"
+
+    # Values your Angular browser will use
+    environment:
+      - BACKEND_URL=http://localhost:8081
+      - KEYCLOAK_URL=http://localhost:9090
+
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    command: >
+      sh -c "npm install &&
+            npm run start -- --host 0.0.0.0 --poll 2000"
+    depends_on:
+      - backend
+      - keycloak
+
 volumes:
   db_data:
   keycloak_data:
