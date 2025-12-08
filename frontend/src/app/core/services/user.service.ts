@@ -6,7 +6,7 @@ import { Injectable } from "@angular/core";
   providedIn: 'root'
 })
 export class UserService {
-  private api = 'http://localhost:8081/api'
+  private api = 'https://localhost/api'
 
   constructor(private http: HttpClient) {}
 

@@ -14,7 +14,7 @@ public class WebConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) { // CorsRegistry is a helper object for defining which origins, methods, or headers are allowed in CORS.
                 registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:4200")
+                .allowedOrigins("https://localhost")
                 .allowedMethods("GET", "POST", "PUT", "DELETE")
                 .allowedHeaders("*")
                 .exposedHeaders("*")

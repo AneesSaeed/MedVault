@@ -63,3 +63,8 @@ replay_pid*
 
 
 .env*
+
+certs/
+*.pem
+*.key
+*.crt

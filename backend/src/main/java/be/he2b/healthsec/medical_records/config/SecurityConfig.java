@@ -1,5 +1,8 @@
 package be.he2b.healthsec.medical_records.config;
 
+import org.springframework.beans.factory.annotation.Value;
+
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,4 +31,16 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+    @Bean
+    public ApplicationRunner debugIssuer(
+        @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuer,
+        @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwk) {
+
+        return args -> {
+            System.out.println(">>> SPRING ISSUER IN USE = " + issuer);
+            System.out.println(">>> SPRING JWKS IN USE   = " + jwk);
+        };
+    }
+
 }

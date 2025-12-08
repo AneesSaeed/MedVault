@@ -14,7 +14,7 @@ export function initializeKeycloak(keycloak: KeycloakService) {
   return () =>
     keycloak.init({
       config: {
-        url: 'http://localhost:9090',   // URL of your Keycloak server
+        url: 'https://localhost/auth',   // URL of your Keycloak server
         realm: 'health-realm',
         clientId: 'public-client'       // The Keycloak client ID configured for Angular
       },
@@ -22,6 +22,7 @@ export function initializeKeycloak(keycloak: KeycloakService) {
         onLoad: 'login-required',         // Forces Keycloak login when the app loads
         checkLoginIframe: false,
         pkceMethod: 'S256'
-      }
+      },
+      bearerExcludedUrls: [] // REQUIRED after adding nginx HTTPS
     });
 }

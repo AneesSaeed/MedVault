@@ -3,7 +3,6 @@ services:
     image: postgres:16
     container_name: postgres_app
     environment:
-      # Values come from .env at project root
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -18,30 +17,46 @@ services:
     image: quay.io/keycloak/keycloak:26.3.0
     container_name: keycloak
     environment:
-      # Admin credentials (used for Keycloak console login)
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-    ports:
-      - "9090:8080"
     command:
-      - start-dev # Dev mode (fast startup)
+      - start-dev
       - --import-realm
-      - --hostname=http://localhost:9090
+      - --hostname-strict=false
+      - --proxy-headers=xforwarded
+      - --http-relative-path=/auth
+      - --spi-hostname-default-frontend-url=https://localhost/auth
+      - --spi-hostname-default-backend-url=http://keycloak:8080/auth
+
     volumes:
-    - ./keycloak-config:/opt/keycloak/data/import
+      - ./keycloak-config:/opt/keycloak/data/import
     restart: always
 
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./certs:/certs
+    depends_on:
+      - angular
+      - backend
+      - keycloak
 
   backend:
     build: ./backend
     container_name: spring_backend
     environment:
-      - DB_HOST=db
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - KEYCLOAK_ISSUER_URI=http://localhost:9090/realms/health-realm # it defines where our backend should look to validate JWT tokens issued by Keycloak
-      - KEYCLOAK_JWKS_URI=http://keycloak:8080/realms/health-realm/protocol/openid-connect/certs
+      DB_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      KEYCLOAK_ISSUER_URI: https://localhost/auth/realms/health-realm
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/auth/realms/health-realm/protocol/openid-connect/certs
+
     depends_on:
       - db
       - keycloak
@@ -51,23 +66,18 @@ services:
   angular:
     image: node:20
     container_name: angular_frontend
-  
     working_dir: /usr/src/app
-    
     ports:
       - "4200:4200"
-
-    # Values your Angular browser will use
     environment:
-      - BACKEND_URL=http://localhost:8081
-      - KEYCLOAK_URL=http://localhost:9090
-
+      BACKEND_URL: https://localhost/api
+      KEYCLOAK_URL: https://localhost/auth
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
     command: >
       sh -c "npm install &&
-            npm run start -- --host 0.0.0.0 --poll 2000"
+             npm run start -- --host 0.0.0.0 --disable-host-check"
     depends_on:
       - backend
       - keycloak

@@ -2,8 +2,8 @@
 
 set -e
 
-echo "Starting Keycloak and Postgres..."
-docker compose up -d keycloak db
+echo "Starting Keycloak, nginx and Postgres..."
+docker compose up -d keycloak db nginx
 
 echo "Waiting for Keycloak and Postgres to become ready..."
 sleep 10

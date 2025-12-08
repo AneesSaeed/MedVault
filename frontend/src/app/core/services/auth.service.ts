@@ -33,6 +33,6 @@ export class AuthService {
   }
 
   logout() {
-    return this.keycloak.logout('http://localhost:4200');
+    return this.keycloak.logout('https://localhost/');
   }
 }
