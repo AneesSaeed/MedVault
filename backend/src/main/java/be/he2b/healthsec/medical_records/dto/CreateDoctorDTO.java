@@ -7,5 +7,16 @@ import lombok.Setter;
 @Getter @Setter
 public class CreateDoctorDTO {
     private User user;
-    private String medicalOrganizationEncBase64;
+    /**
+     * Organisation médicale en clair (pas de chiffrement nécessaire).
+     * Les informations des médecins sont stockées en clair pour permettre
+     * aux patients de les identifier et de les rechercher.
+     */
+    private String medicalOrganization;
+    /**
+     * Clé publique RSA de l'utilisateur en format PEM.
+     * Cette clé sera utilisée pour chiffrer la clé AES du patient
+     * lors du partage (dans PatientDoctor).
+     */
+    private String publicKeyPEM;
 }

@@ -66,7 +66,8 @@ public class UserController {
         try {
             String msg = userService.createPatient(
                 dto.getUser(),
-                dto.getDateOfBirthEncBase64()
+                dto.getDateOfBirthEncBase64(),
+                dto.getPublicKeyPEM()
             );
 
             return ResponseEntity.ok(
@@ -88,7 +89,8 @@ public class UserController {
         try {
             String msg = userService.createDoctor(
                 dto.getUser(),
-                dto.getMedicalOrganizationEncBase64()
+                dto.getMedicalOrganization(),
+                dto.getPublicKeyPEM()
             );
 
             return ResponseEntity.ok(

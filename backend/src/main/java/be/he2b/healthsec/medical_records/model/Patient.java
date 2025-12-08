@@ -43,6 +43,17 @@ public class Patient {
     
     @Column(name = "dob_enc", nullable = false, columnDefinition = "bytea")
     private byte[] dateOfBirthEnc;
+        //important à bien comprendre
+
+    /**
+     * NOTE: La clé symétrique AES du patient n'est PAS stockée ici.
+     * Elle est stockée uniquement dans PatientDoctor.encryptedSymmetricKeyForDoctor
+     * quand un médecin est autorisé, chiffrée avec la clé publique RSA du médecin.
+     * Le patient garde sa clé AES dans le localStorage côté client.
+     * Si le patient veut accéder à ses données depuis un autre appareil,
+     * il doit utiliser sa clé privée RSA pour déchiffrer la clé AES stockée
+     * dans PatientDoctor (ou implémenter un système de récupération sécurisé).
+     */
 
     // Un patient a plusieurs liens PatientDoctor
     @Builder.Default

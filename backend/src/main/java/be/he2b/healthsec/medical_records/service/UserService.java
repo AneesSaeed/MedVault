@@ -13,6 +13,7 @@ import be.he2b.healthsec.medical_records.repository.DoctorRepository;
 import be.he2b.healthsec.medical_records.repository.PatientRepository;
 import be.he2b.healthsec.medical_records.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+    //important à bien comprendre
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +31,8 @@ public class UserService {
     }
 
     
-    public String createPatient(User user, String dateOfBirthEncBase64) {
+    public String createPatient(User user, String dateOfBirthEncBase64, 
+                                String publicKeyPEM) {
         
         // Prevent duplicates
         Optional<User> existing = userRepository.findByKeycloakId(user.getKeycloakId());
@@ -38,11 +40,17 @@ public class UserService {
             throw new IllegalArgumentException("User already exists");
         }
 
+        // Stocke la clé publique RSA
+        user.setPublicKey(publicKeyPEM);
         user.setCreatedAt(Instant.now());
         User savedUser = userRepository.save(user);
         
         byte[] dateOfBirthEnc = Base64.getDecoder().decode(dateOfBirthEncBase64);
         
+        // NOTE: La clé AES du patient n'est PAS stockée ici.
+        // Elle reste dans le localStorage côté client.
+        // Elle sera partagée avec les médecins uniquement lors de la création
+        // de la relation PatientDoctor, chiffrée avec la clé publique RSA du médecin.
         Patient patient = Patient.builder()
             .user(savedUser)
             .dateOfBirthEnc(dateOfBirthEnc)
@@ -52,7 +60,7 @@ public class UserService {
         return "Patient created with ID: " + savedUser.getId();
     }
     
-    public String createDoctor(User user, String medicalOrganizationEncBase64) {
+    public String createDoctor(User user, String medicalOrganization, String publicKeyPEM) {
         
         // Prevent duplicates
         Optional<User> existing = userRepository.findByKeycloakId(user.getKeycloakId());
@@ -60,14 +68,15 @@ public class UserService {
             throw new IllegalArgumentException("User already exists");
         }
 
+        // Stocke la clé publique RSA
+        user.setPublicKey(publicKeyPEM);
         user.setCreatedAt(Instant.now());
         User savedUser = userRepository.save(user);
     
-        byte[] medicalOrganizationEnc = Base64.getDecoder().decode(medicalOrganizationEncBase64);
-    
+        // Organisation médicale en clair (pas de chiffrement nécessaire)
         Doctor doctor = Doctor.builder()
                 .user(savedUser)
-                .medicalOrganizationEnc(medicalOrganizationEnc)
+                .medicalOrganization(medicalOrganization)
                 .build();
     
         doctorRepository.save(doctor);
