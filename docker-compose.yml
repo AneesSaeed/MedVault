@@ -28,19 +28,18 @@ services:
       - --spi-hostname-default-frontend-url=https://localhost/auth
       - --spi-hostname-default-backend-url=http://keycloak:8080/auth
     ports:
-      - "8080:8080"  # only for dev env user
+      - "8080:8080"  # only for dev env use
     volumes:
       - ./keycloak-config:/opt/keycloak/data/import
     restart: always
 
   nginx:
-    image: nginx:latest
+    build: ./nginx 
     container_name: nginx
     ports:
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./certs:/certs
+      - ./nginx/certs:/certs 
     depends_on:
       - angular
       - backend
