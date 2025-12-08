@@ -3,10 +3,10 @@
 set -e
 
 echo "Starting Keycloak, nginx and Postgres..."
-docker compose up -d keycloak db nginx
+docker compose up -d --no-deps keycloak db nginx
 
 echo "Waiting for Keycloak and Postgres to become ready..."
-sleep 10
+sleep 5
 
 echo "Starting Spring Boot backend..."
 (
@@ -19,8 +19,10 @@ BACKEND_PID=$!
 echo "Starting Angular frontend..."
 (
   cd frontend
-  ng serve --host 0.0.0.0 --port 4200
+  ng serve --host 0.0.0.0 --port 4200 --disable-host-check
 ) &
+FRONTEND_PID=$!
+
 
 FRONTEND_PID=$!
 
@@ -28,10 +30,6 @@ echo ""
 echo "Development environment running."
 echo "Backend PID:   $BACKEND_PID"
 echo "Frontend PID:  $FRONTEND_PID"
-echo ""
-echo "Keycloak: http://localhost:9090"
-echo "Backend:  http://localhost:8081"
-echo "Frontend: http://localhost:4200"
 echo ""
 echo "Press CTRL+C to stop all."
 echo ""

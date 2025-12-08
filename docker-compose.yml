@@ -27,7 +27,8 @@ services:
       - --http-relative-path=/auth
       - --spi-hostname-default-frontend-url=https://localhost/auth
       - --spi-hostname-default-backend-url=http://keycloak:8080/auth
-
+    ports:
+      - "8080:8080"  # only for dev env user
     volumes:
       - ./keycloak-config:/opt/keycloak/data/import
     restart: always
