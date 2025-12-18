@@ -68,7 +68,7 @@ services:
       # allowing TLS verification of https://keycloak:8443
       JAVA_TOOL_OPTIONS: >-
         -Djavax.net.ssl.trustStore=/certs/internal/truststore.jks
-        -Djavax.net.ssl.trustStorePassword=changeit
+        -Djavax.net.ssl.trustStorePassword=secret
     volumes:
       - internal_certs:/certs/internal:ro
     depends_on:

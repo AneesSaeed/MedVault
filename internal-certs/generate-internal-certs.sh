@@ -11,7 +11,7 @@ CA_CRT="$DIR/ca.crt"
 
 # Java truststore containing CA_CRT, used by backend JVM to trust Keycloak TLS
 TRUSTSTORE="$DIR/truststore.jks"
-STOREPASS="changeit"
+STOREPASS="secret"
 
 # Backend server identity (keypair + cert + PKCS12 keystore for Spring Boot)
 BACKEND_KEY="$DIR/backend.key"
