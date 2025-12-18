@@ -1,4 +1,11 @@
 services:
+  internal_certs:
+    # Generates the internal CA + service certs into a named volume.
+    build: ./internal-certs
+    container_name: internal_certs
+    volumes:
+      - internal_certs:/certs/internal
+
   db:
     image: postgres:16
     container_name: postgres_app
@@ -20,30 +27,30 @@ services:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     command:
-      - start-dev
+      - start
       - --import-realm
       - --hostname-strict=false
       - --proxy-headers=xforwarded
       - --http-relative-path=/auth
-      - --spi-hostname-default-frontend-url=https://localhost/auth
-      - --spi-hostname-default-backend-url=http://keycloak:8080/auth
-    ports:
-      - "8080:8080"  # only for dev env use
+
+      # Keycloak HTTPS server cert/key (issued by internal CA)
+      - --https-certificate-file=/certs/internal/keycloak.crt
+      - --https-certificate-key-file=/certs/internal/keycloak.key
+      - --https-port=8443
+      
+      # Disable HTTP entirely (prevents bypassing TLS over Docker network)
+      - --http-enabled=false
+    depends_on:
+    - internal_certs
+    
+    # Only internal port, not published to host.
+    expose:
+    - "8443"
     volumes:
       - ./keycloak-config:/opt/keycloak/data/import
+      # Read-only: Keycloak consumes cert material, cannot modify it
+      - internal_certs:/certs/internal:ro
     restart: always
-
-  nginx:
-    build: ./nginx 
-    container_name: nginx
-    ports:
-      - "443:443"
-    volumes:
-      - ./nginx/certs:/certs 
-    depends_on:
-      - angular
-      - backend
-      - keycloak
 
   backend:
     build: ./backend
@@ -54,14 +61,24 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
-      KEYCLOAK_ISSUER_URI: https://localhost/auth/realms/health-realm
-      KEYCLOAK_JWKS_URI: http://keycloak:8080/auth/realms/health-realm/protocol/openid-connect/certs
-
+      KEYCLOAK_ISSUER_URI: https://localhost/auth/realms/health-realm # Issuer must match tokens coming from the browser-facing UR
+      KEYCLOAK_JWKS_URI: https://keycloak:8443/auth/realms/health-realm/protocol/openid-connect/certs # JWKS fetched over internal HTTPS from Keycloak container name
+      
+      # JVM truststore includes our internal CA,
+      # allowing TLS verification of https://keycloak:8443
+      JAVA_TOOL_OPTIONS: >-
+        -Djavax.net.ssl.trustStore=/certs/internal/truststore.jks
+        -Djavax.net.ssl.trustStorePassword=changeit
+    volumes:
+      - internal_certs:/certs/internal:ro
     depends_on:
+      - internal_certs
       - db
       - keycloak
-    ports:
-      - "8081:8081"
+    # Only internal port, not published to host
+    expose:
+      - "8443"
+
 
   angular:
     image: node:20
@@ -82,6 +99,22 @@ services:
       - backend
       - keycloak
 
+  nginx:
+    build: ./nginx 
+    container_name: nginx
+    ports:
+      # Only nginx is exposed to host on 443
+      - "443:443"
+    volumes:
+      # Edge TLS certs (localhost)
+      - ./nginx/certs:/certs 
+      # Internal CA (read-only) for upstream verification
+      - internal_certs:/certs/internal:ro
+    depends_on:
+      - internal_certs
+      - angular
+      - backend
+      - keycloak
 volumes:
   db_data:
-  keycloak_data:
+  internal_certs:

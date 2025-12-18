@@ -2,10 +2,10 @@
 
 set -e
 
-echo "Starting Keycloak, nginx and Postgres..."
-docker compose up -d --no-deps keycloak db nginx
+echo "Starting internal certs, Keycloak, nginx and Postgres..."
+docker compose up -d --no-deps internal_certs keycloak db nginx
 
-echo "Waiting for Keycloak and Postgres to become ready..."
+echo "Waiting for internal certs, Keycloak and Postgres to become ready..."
 sleep 5
 
 echo "Starting Spring Boot backend..."

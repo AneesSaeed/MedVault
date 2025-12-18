@@ -1,4 +1,4 @@
-FROM maven:3.9.9-eclipse-temurin-23-alpine AS build
+FROM maven:3.9.9-eclipse-temurin-23 AS build
 WORKDIR /app
 
 COPY pom.xml .
@@ -11,6 +11,6 @@ WORKDIR /app
 
 COPY --from=build /app/target/*.jar /app/app.jar
 
-EXPOSE 8080
+EXPOSE 8443
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
