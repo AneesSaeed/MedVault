@@ -20,13 +20,19 @@ import { HomeComponent } from './home/home.component';
 import { AppRoutingModule } from './app-routing.module';
 import { OnboardingComponent } from './onboarding/onboarding.component';
 import { HttpClientModule } from '@angular/common/http';
+import { DoctorSearchComponent } from './doctor-search/doctor-search.component';
+import { MyPatientsComponent } from './my-patients/my-patients.component';
+import { MyDoctorsComponent } from './my-doctors/my-doctors.component';
 
 @NgModule({
   declarations: [
     AppComponent, // Main application UI component
     HeaderComponent,
     HomeComponent,
-    OnboardingComponent
+    OnboardingComponent,
+    DoctorSearchComponent,
+    MyPatientsComponent,
+    MyDoctorsComponent
   ],
   imports: [
     BrowserModule,

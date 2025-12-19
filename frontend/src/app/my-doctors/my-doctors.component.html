@@ -1,0 +1,28 @@
+<div class="page">
+  <h2>Mes médecins</h2>
+
+  <div *ngIf="loading">Chargement…</div>
+  <div *ngIf="message" class="msg success">{{ message }}</div>
+  <div *ngIf="error" class="msg error">{{ error }}</div>
+
+  <ul class="doctors" *ngIf="!loading && doctors.length">
+    <li *ngFor="let d of doctors" class="doctor">
+      <div class="info">
+        <div class="name">{{ d.firstName }} {{ d.lastName }}</div>
+        <div class="org">{{ d.medicalOrganization }}</div>
+        <div class="email">{{ d.email }}</div>
+      </div>
+      <button 
+        class="btn-remove" 
+        (click)="removeDoctor(d)" 
+        [disabled]="removingId===d.doctorId">
+        {{ removingId===d.doctorId ? 'Suppression…' : 'Retirer' }}
+      </button>
+    </li>
+  </ul>
+
+  <div *ngIf="!loading && !doctors.length" class="empty">
+    Vous n'avez pas encore ajouté de médecin.
+    <a routerLink="/doctors">Rechercher un médecin</a>
+  </div>
+</div>

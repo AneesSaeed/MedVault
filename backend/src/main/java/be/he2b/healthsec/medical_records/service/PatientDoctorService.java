@@ -3,6 +3,7 @@ package be.he2b.healthsec.medical_records.service;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -142,67 +143,92 @@ public class PatientDoctorService {
             .map(doctor -> {
                 DoctorInfoDTO dto = new DoctorInfoDTO();
                 dto.setDoctorId(doctor.getId().toString());
-                User user = doctor.getUser();
-                dto.setFirstName(user.getFirstName());
-                dto.setLastName(user.getLastName());
+                // Les données personnelles sont maintenant dans Doctor, pas dans User
+                dto.setFirstName(doctor.getFirstName());
+                dto.setLastName(doctor.getLastName());
                 dto.setMedicalOrganization(doctor.getMedicalOrganization());
-                dto.setPublicKeyPEM(user.getPublicKey());
+                dto.setPublicKeyPEM(doctor.getUser().getPublicKey());
                 return dto;
             })
             .collect(Collectors.toList());
     }
 
     /**
-     * Recherche des patients par nom et/ou prénom.
-     * Utilisé par les médecins pour trouver des patients à qui demander l'accès.
+     * Recherche des médecins par nom ou prénom (recherche insensible à la casse).
      * 
-     * @param firstName Prénom (optionnel, peut être null ou vide)
-     * @param lastName Nom (optionnel, peut être null ou vide)
-     * @return Liste des patients correspondants
+     * @param searchTerm Terme de recherche (nom ou prénom)
+     * @return Liste des médecins correspondants
      */
-    public List<PatientInfoDTO> searchPatients(String firstName, String lastName) {
-        List<Patient> patients = patientRepository.findAll();
-        
-        return patients.stream()
-            .filter(patient -> {
-                User user = patient.getUser();
-                boolean firstNameMatch = firstName == null || firstName.trim().isEmpty() || 
-                    user.getFirstName().toLowerCase().contains(firstName.toLowerCase());
-                boolean lastNameMatch = lastName == null || lastName.trim().isEmpty() || 
-                    user.getLastName().toLowerCase().contains(lastName.toLowerCase());
-                return firstNameMatch && lastNameMatch;
-            })
-            .map(patient -> {
-                PatientInfoDTO dto = new PatientInfoDTO();
-                dto.setPatientId(patient.getId().toString());
-                User user = patient.getUser();
-                dto.setFirstName(user.getFirstName());
-                dto.setLastName(user.getLastName());
-                dto.setPublicKeyPEM(user.getPublicKey());
+    public List<DoctorInfoDTO> searchDoctorsByName(String searchTerm) {
+        String lowerSearch = searchTerm.toLowerCase();
+        List<Doctor> doctors = doctorRepository.findAll();
+        return doctors.stream()
+            .filter(doctor -> 
+                doctor.getFirstName().toLowerCase().contains(lowerSearch) ||
+                doctor.getLastName().toLowerCase().contains(lowerSearch)
+            )
+            .map(doctor -> {
+                DoctorInfoDTO dto = new DoctorInfoDTO();
+                dto.setDoctorId(doctor.getId().toString());
+                dto.setFirstName(doctor.getFirstName());
+                dto.setLastName(doctor.getLastName());
+                dto.setMedicalOrganization(doctor.getMedicalOrganization());
+                dto.setPublicKeyPEM(doctor.getUser().getPublicKey());
                 return dto;
             })
             .collect(Collectors.toList());
     }
 
     /**
-     * Récupère la clé publique RSA d'un patient.
+     * Récupère la liste des patients d'un médecin avec leurs données chiffrées.
      * 
+     * @param doctorId ID du médecin
+     * @return Liste des patients avec données chiffrées + clé AES chiffrée
+     */
+    public List<?> getDoctorPatients(UUID doctorId) {
+        List<PatientDoctor> relations = patientDoctorRepository.findByDoctorId(doctorId);
+        return relations.stream()
+            .map(rel -> {
+                Patient patient = rel.getPatient();
+                return Map.of(
+                    "patientId", patient.getId().toString(),
+                    "firstNameEnc", Base64.getEncoder().encodeToString(patient.getFirstNameEnc()),
+                    "lastNameEnc", Base64.getEncoder().encodeToString(patient.getLastNameEnc()),
+                    "emailEnc", Base64.getEncoder().encodeToString(patient.getEmailEnc()),
+                    "encryptedAESKey", Base64.getEncoder().encodeToString(rel.getEncryptedSymmetricKeyForDoctor())
+                );
+            })
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère les données chiffrées d'un patient spécifique.
+     * Vérifie que le médecin a accès au patient via une relation PatientDoctor.
+     * 
+     * @param doctorId ID du médecin
      * @param patientId ID du patient
-     * @return Clé publique RSA en format PEM
+     * @return Données chiffrées du patient + clé AES chiffrée
      */
-    public String getPatientPublicKey(UUID patientId) {
-        Optional<Patient> patientOpt = patientRepository.findById(patientId);
-        if (patientOpt.isEmpty()) {
-            throw new IllegalArgumentException("Patient not found");
+    public Map<String, String> getPatientEncryptedData(UUID doctorId, UUID patientId) {
+        // Vérifie que la relation PatientDoctor existe
+        PatientDoctorId id = new PatientDoctorId(patientId, doctorId);
+        Optional<PatientDoctor> relationOpt = patientDoctorRepository.findById(id);
+        if (relationOpt.isEmpty()) {
+            throw new IllegalArgumentException("Doctor does not have access to this patient");
         }
-        
-        Patient patient = patientOpt.get();
-        User user = patient.getUser();
-        if (user.getPublicKey() == null) {
-            throw new IllegalStateException("Patient does not have a public key");
-        }
-        
-        return user.getPublicKey();
+
+        PatientDoctor relation = relationOpt.get();
+        Patient patient = relation.getPatient();
+
+        return Map.of(
+            "patientId", patient.getId().toString(),
+            "firstNameEnc", Base64.getEncoder().encodeToString(patient.getFirstNameEnc()),
+            "lastNameEnc", Base64.getEncoder().encodeToString(patient.getLastNameEnc()),
+            "emailEnc", Base64.getEncoder().encodeToString(patient.getEmailEnc()),
+            "dateOfBirthEnc", Base64.getEncoder().encodeToString(patient.getDateOfBirthEnc()),
+            "encryptedAESKey", Base64.getEncoder().encodeToString(relation.getEncryptedSymmetricKeyForDoctor())
+        );
     }
+
 }
 

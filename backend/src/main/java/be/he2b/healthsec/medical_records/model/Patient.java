@@ -41,6 +41,34 @@ public class Patient {
     @JoinColumn(name = "id")
     private User user;
     
+    /**
+     * SÉCURITÉ: Prénom du patient chiffré avec sa clé AES.
+     * Les prénoms des patients sont chiffrés pour empêcher l'énumération
+     * via accès direct à la base de données.
+     * User.firstName peut être laissé NULL ou contenir une valeur générique.
+     */
+    @Column(name = "first_name_enc", nullable = false, columnDefinition = "bytea")
+    private byte[] firstNameEnc;
+    
+    /**
+     * SÉCURITÉ: Nom du patient chiffré avec sa clé AES.
+     * Les noms des patients sont chiffrés pour empêcher l'énumération
+     * via accès direct à la base de données.
+     * User.lastName peut être laissé NULL ou contenir une valeur générique.
+     */
+    @Column(name = "last_name_enc", nullable = false, columnDefinition = "bytea")
+    private byte[] lastNameEnc;
+    
+    /**
+     * SÉCURITÉ: Email du patient chiffré avec sa clé AES.
+     * User.email doit être laissé NULL pour les patients.
+     */
+    @Column(name = "email_enc", nullable = false, columnDefinition = "bytea")
+    private byte[] emailEnc;
+    
+    /**
+     * Date de naissance chiffrée avec la clé AES du patient.
+     */
     @Column(name = "dob_enc", nullable = false, columnDefinition = "bytea")
     private byte[] dateOfBirthEnc;
         //important à bien comprendre

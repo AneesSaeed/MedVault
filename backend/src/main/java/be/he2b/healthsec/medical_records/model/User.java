@@ -34,35 +34,18 @@ public class User {
     private String keycloakId; // id fourni par Keycloak
 
     /**
-     * Prénom en clair.
-     * Pour les patients et les médecins, le prénom est stocké en clair
-     * pour permettre la recherche et l'identification.
+     * ARCHITECTURE SIMPLIFIÉE:
+     * - User contient UNIQUEMENT les champs communs (id, keycloakId, role, publicKey)
+     * - Les données personnelles sont dans Patient (chiffrées) ou Doctor (en clair)
+     * - Pas de firstName/lastName/email ici pour éviter la confusion
      */
-    @Column(name = "first_name", nullable = false)
-    private String firstName;
-
-    /**
-     * Nom en clair.
-     * Pour les patients et les médecins, le nom est stocké en clair
-     * pour permettre la recherche et l'identification.
-     */
-    @Column(name = "last_name", nullable = false)
-    private String lastName;
-
-    /**
-     * Email chiffré avec AES.
-     * L'email reste chiffré pour protéger la confidentialité.
-     * Nullable pour les médecins (pas nécessaire car leurs données sont en clair).
-     */
-    @Column(name = "email_enc", columnDefinition = "bytea")
-    private byte[] emailEnc;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "user_type_role", nullable = false)
     private UserType role; // DOCTOR ou PATIENT
 
-    @Column(name = "public_key")
-    private String publicKey; // clé publique PEM/base64
+    @Column(name = "public_key", columnDefinition = "TEXT")
+    private String publicKey; // clé publique PEM/base64 (peut être très longue, ~450+ caractères)
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();

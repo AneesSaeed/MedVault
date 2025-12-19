@@ -63,3 +63,20 @@
     }
   }
 }
+
+.nav {
+  display: flex;
+  gap: 12px;
+  padding: 8px 24px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.nav a {
+  text-decoration: none;
+  color: #0d47a1;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.nav a.active {
+  background: rgba(13, 71, 161, 0.1);
+}

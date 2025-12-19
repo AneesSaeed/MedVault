@@ -32,7 +32,7 @@ export class OnboardingComponent {
     this.isSubmitting = true;
 
     try {
-      // 1. Génère la paire de clés RSA pour l'utilisateur
+      // 1. Génère la paire de clés RSA pour l'utilisateur (TOUS LES RÔLES)
       const { publicKey, privateKey } = await this.cryptoService.generateRSAKeyPair();
       
       // 2. Exporte la clé publique en PEM pour l'envoyer au serveur
@@ -42,24 +42,27 @@ export class OnboardingComponent {
       const privateKeyPEM = await this.cryptoService.exportPrivateKey(privateKey);
       const keycloakId = this.auth.sub;
       this.cryptoService.storePrivateKey(keycloakId, privateKeyPEM);
-      // Stocke aussi la clé publique pour usage futur (chiffrement des données pour le patient)
       this.cryptoService.storePublicKey(keycloakId, publicKeyPEM);
 
       if (this.role === 'PATIENT') {
-        // PATIENT : Nom/prénom en clair, dateOfBirth et email chiffrés
-        
-        // 4. Génère une clé symétrique AES pour chiffrer les données sensibles du patient
+        // PATIENT : toutes les données personnelles sont chiffrées côté client
+
+        // 4. Génère une clé symétrique AES SEULEMENT pour les patients
         const aesKey = await this.cryptoService.generateAESKey();
-        
+
         // 5. Stocke la clé AES localement (pour usage futur côté client)
         const aesKeyBase64 = await this.cryptoService.exportAESKey(aesKey);
         this.cryptoService.storeAESKey(keycloakId, aesKeyBase64);
 
-        // 6. Chiffre les données sensibles avec la clé AES (dateOfBirth, email)
-        const emailEnc = await this.cryptoService.encryptWithAES(this.auth.email, aesKey);
-        const dobEnc = await this.cryptoService.encryptWithAES(this.dateOfBirth, aesKey);
+        // 6. Chiffre toutes les données personnelles avec la clé AES
+        const [firstNameEnc, lastNameEnc, emailEnc, dobEnc] = await Promise.all([
+          this.cryptoService.encryptWithAES(this.auth.firstName, aesKey),
+          this.cryptoService.encryptWithAES(this.auth.lastName, aesKey),
+          this.cryptoService.encryptWithAES(this.auth.email, aesKey),
+          this.cryptoService.encryptWithAES(this.dateOfBirth, aesKey)
+        ]);
 
-        // Concatène l'IV avec les données chiffrées (IV + données) pour simplifier le stockage
+        // Concatène IV + cipher en un seul buffer Base64 pour le backend
         const concatEncrypted = (iv: string, encrypted: string): string => {
           const ivBuf = this.base64ToArrayBuffer(iv);
           const encBuf = this.base64ToArrayBuffer(encrypted);
@@ -69,17 +72,10 @@ export class OnboardingComponent {
           return this.arrayBufferToBase64(combined.buffer);
         };
 
-        // User payload : firstName et lastName en clair, email chiffré
-        const userPayload = {
-          keycloakId: keycloakId,
-          firstName: this.auth.firstName, // EN CLAIR
-          lastName: this.auth.lastName,   // EN CLAIR
-          emailEnc: concatEncrypted(emailEnc.iv, emailEnc.encrypted),
-          role: this.role
-        };
-        
         const payload = {
-          user: userPayload,
+          firstNameEncBase64: concatEncrypted(firstNameEnc.iv, firstNameEnc.encrypted),
+          lastNameEncBase64: concatEncrypted(lastNameEnc.iv, lastNameEnc.encrypted),
+          emailEncBase64: concatEncrypted(emailEnc.iv, emailEnc.encrypted),
           dateOfBirthEncBase64: concatEncrypted(dobEnc.iv, dobEnc.encrypted),
           publicKeyPEM: publicKeyPEM
         };
@@ -95,19 +91,13 @@ export class OnboardingComponent {
       }
 
       if (this.role === 'DOCTOR') {
-        // DOCTOR : Tout en clair (nom, prénom, organisation)
-        
-        // User payload : tout en clair, pas de chiffrement nécessaire
-        const userPayload = {
-          keycloakId: keycloakId,
-          firstName: this.auth.firstName, // EN CLAIR
-          lastName: this.auth.lastName,   // EN CLAIR
-          role: this.role
-        };
-        
+        // DOCTOR : données en clair (médecins sont découvrables)
+
         const payload = {
-          user: userPayload,
-          medicalOrganization: this.medicalOrg, // EN CLAIR
+          firstName: this.auth.firstName,
+          lastName: this.auth.lastName,
+          email: this.auth.email,
+          medicalOrganization: this.medicalOrg,
           publicKeyPEM: publicKeyPEM
         };
 

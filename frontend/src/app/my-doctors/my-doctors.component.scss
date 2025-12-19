@@ -1,0 +1,33 @@
+.page { max-width: 900px; margin: 16px auto; }
+.doctors { list-style: none; padding: 0; }
+.doctor { 
+  border-bottom: 1px solid #eee; 
+  padding: 12px 0; 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+}
+.info { flex: 1; }
+.name { font-weight: 600; font-size: 16px; }
+.org { color: #555; font-size: 13px; margin-top: 4px; }
+.email { color: #777; font-size: 12px; margin-top: 2px; }
+.btn-remove { 
+  background: #d32f2f; 
+  color: white; 
+  border: none; 
+  padding: 8px 16px; 
+  border-radius: 4px; 
+  cursor: pointer;
+}
+.btn-remove:hover:not(:disabled) { background: #b71c1c; }
+.btn-remove:disabled { background: #ccc; cursor: not-allowed; }
+.msg { margin: 12px 0; padding: 8px; border-radius: 4px; }
+.success { background: #e9f8ef; color: #145a2b; }
+.error { background: #fdecea; color: #b71c1c; }
+.empty { 
+  color: #777; 
+  margin-top: 12px; 
+  text-align: center;
+  padding: 24px;
+}
+.empty a { color: #0d47a1; text-decoration: underline; }

@@ -18,6 +18,15 @@ export class PatientDoctorService {
   }
 
   /**
+   * Recherche des médecins par nom/prénom
+   */
+  searchDoctors(searchTerm: string) {
+    return this.http.get<any>(`${this.api}/patient-doctor/doctors`, {
+      params: { search: searchTerm }
+    });
+  }
+
+  /**
    * Récupère la clé publique RSA d'un médecin
    */
   getDoctorPublicKey(doctorId: string) {
@@ -35,27 +44,26 @@ export class PatientDoctorService {
   }
 
   /**
-   * Recherche des patients par nom et/ou prénom
-   */
-  searchPatients(firstName?: string, lastName?: string) {
-    const params: any = {};
-    if (firstName) params.firstName = firstName;
-    if (lastName) params.lastName = lastName;
-    return this.http.get<any>(`${this.api}/patient-doctor/patients/search`, { params });
-  }
-
-  /**
-   * Récupère la clé publique RSA d'un patient
-   */
-  getPatientPublicKey(patientId: string) {
-    return this.http.get<any>(`${this.api}/patient-doctor/patient/${patientId}/public-key`);
-  }
-
-  /**
    * Récupère la liste des médecins associés au patient actuel
    */
   getMyDoctors() {
     return this.http.get<any>(`${this.api}/patient-doctor/my-doctors`);
+  }
+
+  /**
+   * Récupère la liste des patients du médecin actuellement authentifié
+   */
+  getMyPatients() {
+    return this.http.get<any>(`${this.api}/patient-doctor/my-patients`);
+  }
+
+  /**
+   * Récupère les données chiffrées d'un patient spécifique
+   * @param patientId ID du patient
+   * @returns Données chiffrées: firstName, lastName, email, dob + clé AES chiffrée
+   */
+  getPatientData(patientId: string) {
+    return this.http.get<any>(`${this.api}/patient-doctor/patient/${patientId}/data`);
   }
 
   /**

@@ -1,0 +1,10 @@
+.page { max-width: 900px; margin: 16px auto; }
+.patients { list-style: none; padding: 0; }
+.patient { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; flex-direction: column; gap: 8px; }
+.main { display: flex; gap: 16px; align-items: baseline; }
+.name { font-weight: 600; }
+.email { color: #555; font-size: 13px; }
+.actions { display: flex; gap: 8px; }
+.details { background: #f7f7f7; padding: 8px; border-radius: 4px; }
+.msg.error { background: #fdecea; color: #b71c1c; padding: 8px; border-radius: 4px; margin: 12px 0; }
+.empty { color: #777; margin-top: 12px; }

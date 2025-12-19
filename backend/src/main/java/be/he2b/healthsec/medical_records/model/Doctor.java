@@ -35,6 +35,32 @@ public class Doctor {
     private User user;
 
     /**
+     * SÉCURITÉ: Toutes les informations des médecins sont stockées EN CLAIR
+     * car les médecins sont "découvrables" par les patients pour l'identification.
+     */
+    
+    /**
+     * Prénom du médecin (en clair).
+     * Permet aux patients de rechercher et identifier les médecins.
+     */
+    @Column(name = "first_name", nullable = false)
+    private String firstName;
+    
+    /**
+     * Nom du médecin (en clair).
+     * Permet aux patients de rechercher et identifier les médecins.
+     */
+    @Column(name = "last_name", nullable = false)
+    private String lastName;
+    
+    /**
+     * Email du médecin (en clair).
+     * Contact professionnel visible par les patients.
+     */
+    @Column(name = "email", nullable = false)
+    private String email;
+
+    /**
      * Organisation médicale en clair.
      * Les informations des médecins sont stockées en clair pour permettre
      * aux patients de les identifier et de les rechercher.
