@@ -7,17 +7,16 @@
   </div>
 </header>
 
+<div class="user-info-bar">
+  <span class="user-info-bar__item"><strong>Email:</strong> {{ email }}</span>
+  <span class="user-info-bar__item"><strong>Name:</strong> {{ firstName }} {{ lastName }}</span>
+  <span class="user-info-bar__item"><strong>Role:</strong> {{ role }}</span>
+</div>
 
 <nav class="nav">
   <a routerLink="/" routerLinkActive="active">Accueil</a>
   <a *ngIf="role==='PATIENT'" routerLink="/doctors" routerLinkActive="active">Rechercher un médecin</a>
   <a *ngIf="role==='PATIENT'" routerLink="/my-doctors" routerLinkActive="active">Mes médecins</a>
   <a *ngIf="role==='DOCTOR'" routerLink="/my-patients" routerLinkActive="active">Mes patients</a>
-  
 </nav>
 
-<div class="user-info-bar">
-  <span class="user-info-bar__item"><strong>Email:</strong> {{ email }}</span>
-  <span class="user-info-bar__item"><strong>Name:</strong> {{ firstName }} {{ lastName }}</span>
-  <span class="user-info-bar__item"><strong>Role:</strong> {{ role }}</span>
-</div>

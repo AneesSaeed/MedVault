@@ -5,6 +5,16 @@ services:
     container_name: internal_certs
     volumes:
       - internal_certs:/certs/internal
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /certs/internal/ca.crt && test -f /certs/internal/truststore.jks && test -f /certs/internal/backend.p12 && test -f /certs/internal/keycloak.crt && test -f /certs/internal/keycloak.key"
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+      start_period: 2s
 
   db:
     image: postgres:16
@@ -41,8 +51,8 @@ services:
       # Disable HTTP entirely (prevents bypassing TLS over Docker network)
       - --http-enabled=false
     depends_on:
-    - internal_certs
-    
+      internal_certs:
+        condition: service_healthy
     # Only internal port, not published to host.
     expose:
     - "8443"
@@ -72,9 +82,12 @@ services:
     volumes:
       - internal_certs:/certs/internal:ro
     depends_on:
-      - internal_certs
-      - db
-      - keycloak
+      internal_certs:
+        condition: service_healthy
+      db:
+        condition: service_started
+      keycloak:
+        condition: service_started
     # Only internal port, not published to host
     expose:
       - "8443"
@@ -111,10 +124,14 @@ services:
       # Internal CA (read-only) for upstream verification
       - internal_certs:/certs/internal:ro
     depends_on:
-      - internal_certs
-      - angular
-      - backend
-      - keycloak
+      internal_certs:
+        condition: service_healthy
+      angular:
+        condition: service_started
+      backend:
+        condition: service_started
+      keycloak:
+        condition: service_started
 volumes:
   db_data:
   internal_certs:

@@ -24,17 +24,18 @@ KEYCLOAK_CRT="$DIR/keycloak.crt"
 
 
 fix_perms() {
-  # Make directory traversable
   chmod 755 "$DIR" || true
 
-  # Public material: readable by everyone
-  chmod 644 "$DIR"/*.crt "$DIR"/ca.crt "$DIR"/truststore.jks "$DIR"/ca.srl 2>/dev/null || true
+  # Public material
+  chmod 644 "$DIR"/*.crt "$DIR"/ca.srl "$DIR"/truststore.jks 2>/dev/null || true
 
-  # Private material (not world-readable)
-  chmod 640 "$DIR"/*.key "$DIR"/*.p12 "$DIR"/ca.key 2>/dev/null || true
+  # Keystore must be readable by backend even if non-root/non-GID0
+  chmod 644 "$DIR"/*.p12 2>/dev/null || true
 
-  # Use group 0 so typical rootless container setups with GID 0 can read
-  # (required because keycloak/backend may not run as root)
+  # Keep private keys restricted (only root/group readable)
+  chmod 640 "$DIR"/*.key "$DIR"/ca.key 2>/dev/null || true
+
+  # Optional: keep group 0 for rootless setups, doesn't hurt
   chgrp 0 "$DIR"/*.key "$DIR"/*.p12 "$DIR"/ca.key 2>/dev/null || true
 }
 

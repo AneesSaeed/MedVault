@@ -3,14 +3,14 @@ import { PatientDoctorService } from './patient-doctor.service';
 
 /**
  * Helper pour ajouter un médecin à un patient.
- * 
+ *
  * Selon l'énoncé : "A patient can add or remove a doctor to his list of appointed doctors."
- * 
+ *
  * Flux simplifié :
  * 1. Patient récupère la clé publique RSA du médecin
  * 2. Patient chiffre sa clé AES avec la clé publique RSA du médecin
  * 3. Patient envoie la clé AES chiffrée au serveur
- * 
+ *
  * Note: Les informations du médecin (nom, prénom, organisation) sont en clair,
  * donc pas besoin de les chiffrer.
  */
@@ -22,7 +22,7 @@ export class AddDoctorHelper {
 
   /**
    * Ajoute un médecin à la liste des médecins du patient.
-   * 
+   *
    * @param doctorId ID du médecin à ajouter
    * @param patientKeycloakId Keycloak ID du patient (pour récupérer les clés)
    * @returns Promise qui se résout quand le médecin est ajouté
@@ -53,7 +53,7 @@ export class AddDoctorHelper {
       patientAESKey,
       doctorPublicKey
     );
-    
+
     // 5. Envoie la clé AES chiffrée au serveur
     await this.patientDoctorService.addDoctorToPatient({
       doctorId: doctorId,

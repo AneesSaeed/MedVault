@@ -34,10 +34,10 @@ export class OnboardingComponent {
     try {
       // 1. Génère la paire de clés RSA pour l'utilisateur (TOUS LES RÔLES)
       const { publicKey, privateKey } = await this.cryptoService.generateRSAKeyPair();
-      
+
       // 2. Exporte la clé publique en PEM pour l'envoyer au serveur
       const publicKeyPEM = await this.cryptoService.exportPublicKey(publicKey);
-      
+
       // 3. Exporte la clé privée en PEM et la stocke localement (jamais envoyée au serveur)
       const privateKeyPEM = await this.cryptoService.exportPrivateKey(privateKey);
       const keycloakId = this.auth.sub;
