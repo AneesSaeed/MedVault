@@ -1,0 +1,25 @@
+<div class="page">
+  <h2>Mes patients</h2>
+
+  <div *ngIf="loading">Chargement…</div>
+  <div *ngIf="error" class="msg error">{{ error }}</div>
+
+  <ul class="patients" *ngIf="!loading && patients.length">
+    <li *ngFor="let p of patients" class="patient">
+      <div class="main">
+        <div class="name">{{ p.firstName }} {{ p.lastName }}</div>
+        <div class="email">{{ p.email }}</div>
+      </div>
+      <div class="actions">
+        <button (click)="loadDetails(p)" [disabled]="detailsLoading[p.patientId]">
+          {{ detailsLoading[p.patientId] ? 'Chargement…' : 'Détails' }}
+        </button>
+      </div>
+      <div class="details" *ngIf="p.dob">
+        <strong>Date de naissance:</strong> {{ p.dob }}
+      </div>
+    </li>
+  </ul>
+
+  <div *ngIf="!loading && !patients.length" class="empty">Aucun patient à afficher.</div>
+</div>

@@ -41,11 +41,20 @@ public class PatientDoctor {
     private Instant appointedAt;
 
     /** 
-     * Clé symétrique chiffrée avec la clé publique du docteur.
-     * Cette version est destinée uniquement à ce docteur.
+     * Clé symétrique AES du PATIENT chiffrée avec la clé publique RSA du docteur.
+     * 
+     * Cette clé permet au médecin de déchiffrer les dossiers médicaux du patient.
+     * 
+     * SÉCURITÉ:
+     * - Cette clé est créée uniquement lors de la création de la relation PatientDoctor
+     * - Elle est chiffrée avec la clé publique RSA du médecin
+     * - Seul le médecin (avec sa clé privée RSA) peut la déchiffrer
+     * - Chaque relation PatientDoctor a sa propre copie de la clé AES du patient
+     * - Si la relation est supprimée, cette clé est également supprimée
      */
     @Column(name = "encrypted_sym_key_for_doctor", columnDefinition = "bytea")
     private byte[] encryptedSymmetricKeyForDoctor;
+
 }
 
 

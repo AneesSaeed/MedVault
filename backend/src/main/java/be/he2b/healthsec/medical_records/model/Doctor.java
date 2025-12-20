@@ -27,16 +27,46 @@ public class Doctor {
 
     @Id
     @Column(columnDefinition = "uuid")
-    private UUID id; // même id que User
+    private UUID id;
 
     @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @MapsId
     @JoinColumn(name = "id")
     private User user;
 
-    @Column(name = "medical_organisation_enc", columnDefinition = "bytea")
-    private byte[] medicalOrganizationEnc;
+    /**
+     * SÉCURITÉ: Toutes les informations des médecins sont stockées EN CLAIR
+     * car les médecins sont "découvrables" par les patients pour l'identification.
+     */
+    
+    /**
+     * Prénom du médecin (en clair).
+     * Permet aux patients de rechercher et identifier les médecins.
+     */
+    @Column(name = "first_name", nullable = false)
+    private String firstName;
+    
+    /**
+     * Nom du médecin (en clair).
+     * Permet aux patients de rechercher et identifier les médecins.
+     */
+    @Column(name = "last_name", nullable = false)
+    private String lastName;
+    
+    /**
+     * Email du médecin (en clair).
+     * Contact professionnel visible par les patients.
+     */
+    @Column(name = "email", nullable = false)
+    private String email;
 
+    /**
+     * Organisation médicale en clair.
+     * Les informations des médecins sont stockées en clair pour permettre
+     * aux patients de les identifier et de les rechercher.
+     */
+    @Column(name = "medical_organisation", nullable = false)
+    private String medicalOrganization;
 
     // Un doctor a plusieurs liens PatientDoctor
     @Builder.Default

@@ -62,11 +62,19 @@ public class UserController {
     //  Create Patient (first-time onboarding)
     // --------------------------------------------------------------
     @PostMapping("/patient")
-    public ResponseEntity<?> createPatient(@RequestBody CreatePatientDTO dto) {
+    public ResponseEntity<?> createPatient(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody CreatePatientDTO dto) {
         try {
+            String keycloakId = jwt.getSubject();
+            
             String msg = userService.createPatient(
-                dto.getUser(),
-                dto.getDateOfBirthEncBase64()
+                keycloakId,
+                dto.getFirstNameEncBase64(),
+                dto.getLastNameEncBase64(),
+                dto.getEmailEncBase64(),
+                dto.getDateOfBirthEncBase64(),
+                dto.getPublicKeyPEM()
             );
 
             return ResponseEntity.ok(
@@ -84,11 +92,19 @@ public class UserController {
     //  Create Doctor (first-time onboarding)
     // --------------------------------------------------------------
     @PostMapping("/doctor")
-    public ResponseEntity<?> createDoctor(@RequestBody CreateDoctorDTO dto) {
+    public ResponseEntity<?> createDoctor(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody CreateDoctorDTO dto) {
         try {
+            String keycloakId = jwt.getSubject();
+            
             String msg = userService.createDoctor(
-                dto.getUser(),
-                dto.getMedicalOrganizationEncBase64()
+                keycloakId,
+                dto.getFirstName(),
+                dto.getLastName(),
+                dto.getEmail(),
+                dto.getMedicalOrganization(),
+                dto.getPublicKeyPEM()
             );
 
             return ResponseEntity.ok(
