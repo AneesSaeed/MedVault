@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import be.he2b.healthsec.medical_records.dto.AddDoctorToPatientDTO;
 import be.he2b.healthsec.medical_records.dto.DoctorInfoDTO;
 import be.he2b.healthsec.medical_records.model.User;
+import be.he2b.healthsec.medical_records.model.UserType;
 import be.he2b.healthsec.medical_records.service.PatientDoctorService;
 import be.he2b.healthsec.medical_records.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,13 @@ public class PatientDoctorController {
                 .body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/my-doctors/keys")
+    public ResponseEntity<?> myDoctorsWithKeys(@AuthenticationPrincipal Jwt jwt) {
+        UUID patientId = currentPatientIdOrThrow(jwt); 
+        return ResponseEntity.ok(Map.of("doctors", patientDoctorService.getPatientDoctorsWithKeys(patientId)));
+    }
+
 
     /**
      * Liste tous les médecins disponibles (pour qu'un patient puisse les rechercher).
@@ -207,6 +215,18 @@ public class PatientDoctorController {
             return ResponseEntity.badRequest()
                 .body(Map.of("error", e.getMessage()));
         }
+    }
+
+    // Helpers
+    private UUID currentPatientIdOrThrow(Jwt jwt) {
+        String keycloakId = jwt.getSubject();
+        User user = userService.findByKeycloakId(keycloakId)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (user.getRole() != UserType.PATIENT) {
+            throw new IllegalArgumentException("Only patients can manage medical files");
+        }
+        return user.getId();
     }
 }
 

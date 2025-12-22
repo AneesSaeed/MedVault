@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { CryptoService } from '../core/services/crypto.service';
 import { AuthService } from '../core/services/auth.service';
+import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { AddDoctorHelper } from '../core/services/add-doctor-helper';
 
 type Doctor = {
@@ -30,9 +31,10 @@ export class DoctorSearchComponent implements OnInit {
   constructor(
     private patientDoctorService: PatientDoctorService,
     private cryptoService: CryptoService,
+    private medicalFilesApi: MedicalFilesApi,
     private auth: AuthService
   ) {
-    this.helper = new AddDoctorHelper(this.cryptoService, this.patientDoctorService);
+    this.helper = new AddDoctorHelper(this.cryptoService, this.patientDoctorService, this.medicalFilesApi);
   }
 
   ngOnInit(): void {

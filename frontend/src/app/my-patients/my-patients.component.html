@@ -5,21 +5,56 @@
   <div *ngIf="error" class="msg error">{{ error }}</div>
 
   <ul class="patients" *ngIf="!loading && patients.length">
-    <li *ngFor="let p of patients" class="patient">
+    <li
+      *ngFor="let p of patients"
+      class="patient"
+      [class.selected]="p.patientId === selectedPatientId"
+      (click)="selectPatient(p)"
+      role="button"
+      tabindex="0"
+    >
       <div class="main">
         <div class="name">{{ p.firstName }} {{ p.lastName }}</div>
         <div class="email">{{ p.email }}</div>
       </div>
+
       <div class="actions">
-        <button (click)="loadDetails(p)" [disabled]="detailsLoading[p.patientId]">
+        <button (click)="$event.stopPropagation(); loadPatientFiles(p.patientId)">
+          Fichiers
+        </button>
+
+        <button
+          (click)="$event.stopPropagation(); loadDetails(p)"
+          [disabled]="detailsLoading[p.patientId]"
+        >
           {{ detailsLoading[p.patientId] ? 'Chargement…' : 'Détails' }}
         </button>
       </div>
+
       <div class="details" *ngIf="p.dob">
         <strong>Date de naissance:</strong> {{ p.dob }}
+      </div>
+
+      <!-- Files section for selected patient -->
+      <div *ngIf="selectedPatientId === p.patientId" class="files">
+        <div *ngIf="filesLoading">Chargement fichiers…</div>
+        <div *ngIf="filesError" class="msg error">{{ filesError }}</div>
+
+        <div *ngIf="!filesLoading && !filesError && !patientFiles.length">
+          Aucun fichier.
+        </div>
+
+        <ul *ngIf="!filesLoading && !filesError && patientFiles.length">
+          <li *ngFor="let f of patientFiles">
+            <span>{{ f.fileName }} — {{ f.uploadDateIso }} — {{ f.sizeBytes }} bytes</span>
+            <button (click)="$event.stopPropagation(); downloadPatientFile(f)">Télécharger</button>
+          </li>
+        </ul>
       </div>
     </li>
   </ul>
 
-  <div *ngIf="!loading && !patients.length" class="empty">Aucun patient à afficher.</div>
+  <div *ngIf="!loading && !patients.length" class="empty">
+    Aucun patient à afficher.
+  </div>
 </div>

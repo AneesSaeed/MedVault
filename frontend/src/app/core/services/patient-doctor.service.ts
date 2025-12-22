@@ -50,6 +50,12 @@ export class PatientDoctorService {
     return this.http.get<any>(`${this.api}/patient-doctor/my-doctors`);
   }
 
+  getMyDoctorsWithKeys() {
+    return this.http.get<{ doctors: { doctorId: string; publicKeyPEM: string }[] }>(
+      `${this.api}/patient-doctor/my-doctors/keys`
+    );
+  }
+
   /**
    * Récupère la liste des patients du médecin actuellement authentifié
    */

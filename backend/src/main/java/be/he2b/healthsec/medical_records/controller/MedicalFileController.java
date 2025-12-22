@@ -2,7 +2,6 @@ package be.he2b.healthsec.medical_records.controller;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -33,6 +32,20 @@ public class MedicalFileController {
         try {
             UUID patientId = currentPatientIdOrThrow(jwt);
             List<MedicalFileInfoDTO> files = medicalFileService.listPatientFiles(patientId);
+            return ResponseEntity.ok(Map.of("files", files));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/patient/{patientId}")
+    public ResponseEntity<?> listFilesForDoctor(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable String patientId
+    ) {
+        try {
+            UUID doctorId = currentDoctorIdOrThrow(jwt);
+            List<MedicalFileInfoDTO> files = medicalFileService.listFilesForDoctor(doctorId, UUID.fromString(patientId));
             return ResponseEntity.ok(Map.of("files", files));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -118,6 +131,46 @@ public class MedicalFileController {
         }
     }
 
+    @GetMapping("/patient/{patientId}/{fileId}/download")
+    public ResponseEntity<?> downloadFileForDoctor(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable String patientId,
+        @PathVariable String fileId
+    ) {
+        try {
+            UUID doctorId = currentDoctorIdOrThrow(jwt);
+
+            // only checks access; content is still encrypted
+            medicalFileService.listFilesForDoctor(doctorId, UUID.fromString(patientId));
+
+            byte[] contentEnc = medicalFileService.getEncryptedFileContent(UUID.fromString(patientId), UUID.fromString(fileId));
+
+            return ResponseEntity.ok()
+                .header("Content-Type", "application/octet-stream")
+                .header("Content-Disposition", "attachment; filename=\"content.enc\"")
+                .body(contentEnc);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+
+    @PostMapping("/share/doctor/{doctorId}")
+    public ResponseEntity<?> shareKeysWithDoctor(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable String doctorId,
+        @RequestBody List<be.he2b.healthsec.medical_records.dto.ShareFileKeyDTO> items
+    ) {
+        try {
+            UUID patientId = currentPatientIdOrThrow(jwt);
+            medicalFileService.shareFileKeysWithDoctor(patientId, UUID.fromString(doctorId), items);
+            return ResponseEntity.ok(Map.of("message", "Keys shared"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ---- helpers ----
     private void validateEncryptedUploadOrThrow(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -128,7 +181,6 @@ public class MedicalFileController {
         }
     }
 
-
     private UUID currentPatientIdOrThrow(Jwt jwt) {
         String keycloakId = jwt.getSubject();
         User user = userService.findByKeycloakId(keycloakId)
@@ -136,6 +188,16 @@ public class MedicalFileController {
 
         if (user.getRole() != UserType.PATIENT) {
             throw new IllegalArgumentException("Only patients can manage medical files");
+        }
+        return user.getId();
+    }
+
+    private UUID currentDoctorIdOrThrow(Jwt jwt) {
+        String keycloakId = jwt.getSubject();
+        User user = userService.findByKeycloakId(keycloakId)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (user.getRole() != UserType.DOCTOR) {
+            throw new IllegalArgumentException("Only doctors can access patient files");
         }
         return user.getId();
     }

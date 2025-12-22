@@ -8,6 +8,7 @@ import { AuthService } from '../core/services/auth.service';
 import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { MedicalFile } from '../core/models/medical-file.model';
 import { CryptoService } from '../core/services/crypto.service';
+import { PatientDoctorService } from '../core/services/patient-doctor.service';
 
 type MedicalFileVM = MedicalFile & {
   fileName: string;
@@ -36,6 +37,7 @@ export class HomeComponent implements OnInit {
     private auth: AuthService,
     private router: Router,
     private medicalFilesApi: MedicalFilesApi,
+    private patientDoctorService: PatientDoctorService,
     private crypto: CryptoService
   ) {}
 
@@ -180,7 +182,7 @@ export class HomeComponent implements OnInit {
       const packed = this.crypto.packIvAndCiphertext(encFile.iv, encFile.encrypted);
       const blob = new Blob([packed], { type: 'application/octet-stream' });
 
-      // 4) wrap per-file key for patient using RSA public key
+      // 4) wrap per-file key for patient
       const wrappedKeyForPatientBase64 = await this.crypto.encryptAESKeyWithRSA(fileKey, pubKey);
 
       const form = new FormData();
@@ -189,11 +191,38 @@ export class HomeComponent implements OnInit {
       form.append('wrappedKeyForPatientBase64', wrappedKeyForPatientBase64);
       form.append('file', blob, 'content.enc');
 
+      // Upload first, then share keys to doctors
       this.medicalFilesApi.upload(form).subscribe({
-        next: () => {
-          this.selectedNewFile = null;
-          this.loading = false;
-          this.refresh();
+        next: async (resp) => {
+          const createdFileId = resp.fileId;
+          try {
+            const fileId = resp.fileId;
+
+            // 5) Share this file key with all appointed doctors
+            const doctorIds = (await this.patientDoctorService.getMyDoctors().toPromise())?.doctorIds ?? [];
+            for (const doctorId of doctorIds) {
+              // get doctor public key
+              const pubRes = await this.patientDoctorService.getDoctorPublicKey(doctorId).toPromise();
+              const doctorPubKey = await this.crypto.importPublicKey(pubRes!.publicKeyPEM);
+
+              // wrap fileKey for that doctor
+              const wrappedKeyForDoctorBase64 = await this.crypto.encryptAESKeyWithRSA(fileKey, doctorPubKey);
+
+              // store in DB (medical_file_keys)
+              await this.medicalFilesApi.shareKeysWithDoctor(doctorId, [
+                { fileId: createdFileId, wrappedKeyForDoctorBase64 }
+              ]).toPromise();
+            }
+
+            this.selectedNewFile = null;
+            this.loading = false;
+            this.refresh();
+          } catch (e: any) {
+            // upload succeeded but sharing failed => doctor won't see it until sharing is fixed
+            this.error = e?.message || 'Uploaded, but failed to share keys with doctors';
+            this.loading = false;
+            this.refresh();
+          }
         },
         error: (err) => {
           this.error = err?.error?.error || err?.message || 'Upload failed';
@@ -205,6 +234,7 @@ export class HomeComponent implements OnInit {
       this.loading = false;
     }
   }
+
 
 
   onOverwriteFileChange(fileId: string, ev: Event): void {

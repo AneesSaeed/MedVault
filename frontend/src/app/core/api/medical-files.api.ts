@@ -28,4 +28,16 @@ export class MedicalFilesApi {
   download(fileId: string) {
     return this.http.get(`${this.baseUrl}/${fileId}/download`, { responseType: 'blob' });
   }
+
+  listForDoctor(patientId: string): Observable<{ files: MedicalFile[] }> {
+    return this.http.get<{ files: MedicalFile[] }>(`${this.baseUrl}/patient/${patientId}`);
+  }
+
+  downloadForDoctor(patientId: string, fileId: string) {
+    return this.http.get(`${this.baseUrl}/patient/${patientId}/${fileId}/download`, { responseType: 'blob' });
+  }
+
+  shareKeysWithDoctor(doctorId: string, items: { fileId: string; wrappedKeyForDoctorBase64: string }[]) {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/share/doctor/${doctorId}`, items);
+  }
 }

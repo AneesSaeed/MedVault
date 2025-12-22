@@ -17,7 +17,6 @@ import be.he2b.healthsec.medical_records.model.PatientDoctor;
 import be.he2b.healthsec.medical_records.model.PatientDoctorId;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.dto.DoctorInfoDTO;
-import be.he2b.healthsec.medical_records.dto.PatientInfoDTO;
 import be.he2b.healthsec.medical_records.repository.DoctorRepository;
 import be.he2b.healthsec.medical_records.repository.PatientDoctorRepository;
 import be.he2b.healthsec.medical_records.repository.PatientRepository;
@@ -113,6 +112,21 @@ public class PatientDoctorService {
         List<PatientDoctor> relations = patientDoctorRepository.findByPatientId(patientId);
         return relations.stream()
             .map(rel -> rel.getDoctor().getId())
+            .collect(Collectors.toList());
+    }
+
+    public List<Map<String, String>> getPatientDoctorsWithKeys(UUID patientId) {
+        List<PatientDoctor> relations = patientDoctorRepository.findByPatientId(patientId);
+        return relations.stream()
+            .filter(rel -> rel.isApprovedByPatient())
+            .map(rel -> {
+                Doctor d = rel.getDoctor();
+                String pem = d.getUser().getPublicKey();
+                return Map.of(
+                    "doctorId", d.getId().toString(),
+                    "publicKeyPEM", pem == null ? "" : pem
+                );
+            })
             .collect(Collectors.toList());
     }
 

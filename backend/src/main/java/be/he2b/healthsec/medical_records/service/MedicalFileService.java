@@ -10,15 +10,20 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import be.he2b.healthsec.medical_records.dto.MedicalFileInfoDTO;
+import be.he2b.healthsec.medical_records.dto.ShareFileKeyDTO;
 import be.he2b.healthsec.medical_records.model.MedicalFile;
 import be.he2b.healthsec.medical_records.model.MedicalFileKey;
 import be.he2b.healthsec.medical_records.model.MedicalFileKeyId;
 import be.he2b.healthsec.medical_records.model.MedicalRecord;
 import be.he2b.healthsec.medical_records.model.Patient;
+import be.he2b.healthsec.medical_records.model.PatientDoctorId;
+import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.repository.MedicalFileKeyRepository;
 import be.he2b.healthsec.medical_records.repository.MedicalFileRepository;
 import be.he2b.healthsec.medical_records.repository.MedicalRecordRepository;
+import be.he2b.healthsec.medical_records.repository.PatientDoctorRepository;
 import be.he2b.healthsec.medical_records.repository.PatientRepository;
+import be.he2b.healthsec.medical_records.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -29,22 +34,81 @@ public class MedicalFileService {
     private final MedicalFileKeyRepository medicalFileKeyRepository;
     private final MedicalFileRepository medicalFileRepository;
     private final PatientRepository patientRepository;
+    private final PatientDoctorRepository patientDoctorRepository;
+    private final UserRepository userRepository;
 
+    // ------------------------------------------------------------
+    // PATIENT: list own files (must return wrapped key for PATIENT)
+    // ------------------------------------------------------------
     @Transactional(readOnly = true)
     public List<MedicalFileInfoDTO> listPatientFiles(UUID patientId) {
         MedicalRecord record = medicalRecordRepository.findById(patientId)
             .orElseThrow(() -> new IllegalArgumentException("Medical record not found"));
 
-        // Ensure patient exists to get patient.user.id for key lookup
-        Patient patient = patientRepository.findById(patientId)
-            .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
-
-        UUID patientUserId = patient.getUser().getId();
-
         return medicalFileRepository.findByMedicalRecordId(record.getId()).stream()
-            .map(mf -> toInfoDtoForRecipient(mf, patientUserId))
+            .map(f -> toInfoDtoForRecipient(f, patientId))
             .collect(Collectors.toList());
     }
+
+    // ------------------------------------------------------------
+    // DOCTOR: list files of a patient (must return wrapped key for DOCTOR)
+    // ------------------------------------------------------------
+    @Transactional(readOnly = true)
+    public List<MedicalFileInfoDTO> listFilesForDoctor(UUID doctorId, UUID patientId) {
+        // must be appointed
+        PatientDoctorId relId = new PatientDoctorId(patientId, doctorId);
+        if (!patientDoctorRepository.existsById(relId)) {
+            throw new IllegalArgumentException("Doctor does not have access to this patient");
+        }
+
+        MedicalRecord record = medicalRecordRepository.findById(patientId)
+            .orElseThrow(() -> new IllegalArgumentException("Medical record not found"));
+
+        return medicalFileRepository.findByMedicalRecordId(record.getId()).stream()
+            .map(f -> toInfoDtoForRecipient(f, doctorId))
+            .collect(Collectors.toList());
+    }
+
+    // ------------------------------------------------------------
+    // PATIENT: share file keys with a doctor (batch)
+    // ------------------------------------------------------------
+    @Transactional
+    public void shareFileKeysWithDoctor(UUID patientId, UUID doctorId, List<ShareFileKeyDTO> items) {
+        // must be appointed
+        PatientDoctorId relId = new PatientDoctorId(patientId, doctorId);
+        if (!patientDoctorRepository.existsById(relId)) {
+            throw new IllegalArgumentException("Doctor is not associated with this patient");
+        }
+
+        MedicalRecord record = medicalRecordRepository.findById(patientId)
+            .orElseThrow(() -> new IllegalArgumentException("Medical record not found"));
+
+        User doctorUser = userRepository.findById(doctorId)
+            .orElseThrow(() -> new IllegalArgumentException("Doctor user not found"));
+
+        for (ShareFileKeyDTO it : items) {
+            UUID fileId = UUID.fromString(it.getFileId());
+
+            MedicalFile file = medicalFileRepository.findByIdAndMedicalRecordId(fileId, record.getId())
+                .orElseThrow(() -> new IllegalArgumentException("File not found"));
+
+            byte[] wrapped = Base64.getDecoder().decode(it.getWrappedKeyForDoctorBase64());
+
+            MedicalFileKeyId keyId = new MedicalFileKeyId(file.getId(), doctorId);
+
+            MedicalFileKey row = medicalFileKeyRepository.findById(keyId).orElse(
+                MedicalFileKey.builder()
+                    .id(keyId)
+                    .file(file)
+                    .recipientUser(doctorUser)
+                    .build()
+            );
+
+            row.setWrappedFileKeyEnc(wrapped);
+            medicalFileKeyRepository.save(row);
+        }
+    }
+
 
     @Transactional
     public UUID uploadPatientFile(
@@ -152,6 +216,9 @@ public class MedicalFileService {
         return existing.getContentEnc();
     }
 
+    // ------------------------------------------------------------
+    // Shared helper
+    // ------------------------------------------------------------
     private MedicalFileInfoDTO toInfoDtoForRecipient(MedicalFile mf, UUID recipientUserId) {
         MedicalFileInfoDTO dto = new MedicalFileInfoDTO();
         dto.setId(mf.getId().toString());

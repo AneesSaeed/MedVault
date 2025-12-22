@@ -1,64 +1,56 @@
 import { CryptoService } from './crypto.service';
 import { PatientDoctorService } from './patient-doctor.service';
+import { MedicalFilesApi } from '../api/medical-files.api';
 
-/**
- * Helper pour ajouter un médecin à un patient.
- *
- * Selon l'énoncé : "A patient can add or remove a doctor to his list of appointed doctors."
- *
- * Flux simplifié :
- * 1. Patient récupère la clé publique RSA du médecin
- * 2. Patient chiffre sa clé AES avec la clé publique RSA du médecin
- * 3. Patient envoie la clé AES chiffrée au serveur
- *
- * Note: Les informations du médecin (nom, prénom, organisation) sont en clair,
- * donc pas besoin de les chiffrer.
- */
 export class AddDoctorHelper {
   constructor(
-    private cryptoService: CryptoService,
-    private patientDoctorService: PatientDoctorService
+    private crypto: CryptoService,
+    private patientDoctorService: PatientDoctorService,
+    private medicalFilesApi: MedicalFilesApi
   ) {}
 
-  /**
-   * Ajoute un médecin à la liste des médecins du patient.
-   *
-   * @param doctorId ID du médecin à ajouter
-   * @param patientKeycloakId Keycloak ID du patient (pour récupérer les clés)
-   * @returns Promise qui se résout quand le médecin est ajouté
-   */
-  async addDoctorToPatient(
-    doctorId: string,
-    patientKeycloakId: string
-  ): Promise<void> {
-    // 1. Récupère la clé publique RSA du médecin
+  async addDoctorToPatient(doctorId: string, patientKeycloakId: string): Promise<void> {
+    // 1) doctor public key
     const doctorPublicKeyResponse = await this.patientDoctorService.getDoctorPublicKey(doctorId).toPromise();
     const doctorPublicKeyPEM = doctorPublicKeyResponse?.publicKeyPEM;
-    if (!doctorPublicKeyPEM) {
-      throw new Error('Failed to retrieve doctor public key');
-    }
+    if (!doctorPublicKeyPEM) throw new Error('Failed to retrieve doctor public key');
+    const doctorPublicKey = await this.crypto.importPublicKey(doctorPublicKeyPEM);
 
-    // 2. Importe la clé publique RSA du médecin
-    const doctorPublicKey = await this.cryptoService.importPublicKey(doctorPublicKeyPEM);
+    // 2) keep your existing link-encrypted AES if your patients list page still uses it
+    //    (optional: you can keep it for decrypting patient identity fields)
+    const patientAESKeyBase64 = this.crypto.getAESKey(patientKeycloakId);
+    if (!patientAESKeyBase64) throw new Error('Patient AES key not found in localStorage');
+    const patientAESKey = await this.crypto.importAESKey(patientAESKeyBase64);
 
-    // 3. Récupère la clé AES du patient depuis le localStorage
-    const patientAESKeyBase64 = this.cryptoService.getAESKey(patientKeycloakId);
-    if (!patientAESKeyBase64) {
-      throw new Error('Patient AES key not found in localStorage');
-    }
-    const patientAESKey = await this.cryptoService.importAESKey(patientAESKeyBase64);
+    const encryptedPatientAESKey = await this.crypto.encryptAESKeyWithRSA(patientAESKey, doctorPublicKey);
 
-    // 4. Chiffre la clé AES du patient avec la clé publique RSA du médecin
-    const encryptedPatientAESKey = await this.cryptoService.encryptAESKeyWithRSA(
-      patientAESKey,
-      doctorPublicKey
-    );
-
-    // 5. Envoie la clé AES chiffrée au serveur
     await this.patientDoctorService.addDoctorToPatient({
-      doctorId: doctorId,
+      doctorId,
       encryptedPatientAESKeyBase64: encryptedPatientAESKey
     }).toPromise();
+
+    // 3) NEW: share wrapped per-file keys for all existing files
+    const patientPrivPem = this.crypto.getPrivateKey(patientKeycloakId);
+    if (!patientPrivPem) throw new Error('Patient private key not found');
+    const patientPrivKey = await this.crypto.importPrivateKey(patientPrivPem);
+
+    const filesRes = await this.medicalFilesApi.list().toPromise();
+    const files = filesRes?.files ?? [];
+
+    const items: { fileId: string; wrappedKeyForDoctorBase64: string }[] = [];
+
+    for (const f of files) {
+      // unwrap K_file using patient private RSA
+      const fileKey = await this.crypto.decryptAESKeyWithRSA(f.wrappedFileKeyEncBase64, patientPrivKey);
+
+      // wrap K_file for doctor
+      const wrappedForDoctor = await this.crypto.encryptAESKeyWithRSA(fileKey, doctorPublicKey);
+
+      items.push({ fileId: f.id, wrappedKeyForDoctorBase64: wrappedForDoctor });
+    }
+
+    if (items.length > 0) {
+      await this.medicalFilesApi.shareKeysWithDoctor(doctorId, items).toPromise();
+    }
   }
 }
-
