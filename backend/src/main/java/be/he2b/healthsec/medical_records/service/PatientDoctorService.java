@@ -18,6 +18,7 @@ import be.he2b.healthsec.medical_records.model.PatientDoctorId;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.dto.DoctorInfoDTO;
 import be.he2b.healthsec.medical_records.repository.DoctorRepository;
+import be.he2b.healthsec.medical_records.repository.MedicalFileKeyRepository;
 import be.he2b.healthsec.medical_records.repository.PatientDoctorRepository;
 import be.he2b.healthsec.medical_records.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PatientDoctorService {
     private final PatientDoctorRepository patientDoctorRepository;
+    private final MedicalFileKeyRepository medicalFileKeyRepository;
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
 
@@ -143,6 +145,10 @@ public class PatientDoctorService {
             throw new IllegalArgumentException("Doctor is not associated with this patient");
         }
         
+        // 1) revoke access: delete wrapped file keys for this doctor on this patient’s files
+        medicalFileKeyRepository.deleteDoctorKeysForPatient(doctorId, patientId);
+
+        // 2) remove the appointment link
         patientDoctorRepository.deleteById(id);
     }
 
