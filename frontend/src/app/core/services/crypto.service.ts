@@ -266,20 +266,6 @@ export class CryptoService {
     return out;
   }
 
-  /**
-   * Unpack iv + ciphertext from one Uint8Array
-   */
-  unpackIvAndCiphertext(packed: ArrayBuffer): { ivBase64: string; encryptedBase64: string } {
-    const bytes = new Uint8Array(packed);
-    const iv = bytes.slice(0, 12);
-    const ct = bytes.slice(12);
-
-    return {
-      ivBase64: this.arrayBufferToBase64(iv.buffer),
-      encryptedBase64: this.arrayBufferToBase64(ct.buffer),
-    };
-  }
-
   unpackIvCipherFromBase64(packedBase64: string): { ivBase64: string; encryptedBase64: string } {
     const combined = this.base64ToUint8Array(packedBase64);
     const iv = combined.slice(0, 12);
@@ -374,47 +360,6 @@ export class CryptoService {
     return localStorage.getItem(`aes_key_${keyId}`);
   }
 
-  /**
-   * Chiffre des données (string) avec RSA-OAEP
-   * @param data Données à chiffrer (string)
-   * @param publicKey Clé publique RSA
-   * @returns Promise avec les données chiffrées en base64
-   */
-  async encryptWithRSA(data: string, publicKey: CryptoKey): Promise<string> {
-    const encoder = new TextEncoder();
-    const dataBuffer = encoder.encode(data);
-
-    const encrypted = await window.crypto.subtle.encrypt(
-      {
-        name: 'RSA-OAEP',
-      },
-      publicKey,
-      dataBuffer
-    );
-
-    return this.arrayBufferToBase64(encrypted);
-  }
-
-  /**
-   * Déchiffre des données avec RSA-OAEP
-   * @param encryptedBase64 Données chiffrées en base64
-   * @param privateKey Clé privée RSA
-   * @returns Promise avec les données déchiffrées (string)
-   */
-  async decryptWithRSA(encryptedBase64: string, privateKey: CryptoKey): Promise<string> {
-    const encrypted = this.base64ToArrayBuffer(encryptedBase64);
-
-    const decrypted = await window.crypto.subtle.decrypt(
-      {
-        name: 'RSA-OAEP',
-      },
-      privateKey,
-      encrypted
-    );
-
-    const decoder = new TextDecoder();
-    return decoder.decode(decrypted);
-  }
 
   // ========== Helpers ==========
 
