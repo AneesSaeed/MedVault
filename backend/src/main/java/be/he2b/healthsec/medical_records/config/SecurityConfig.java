@@ -23,6 +23,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/user/**").authenticated()      // onboarding endpoints
                 .requestMatchers("/api/patient/**").authenticated()
                 .requestMatchers("/api/doctor/**").authenticated()
+                .requestMatchers("/api/medical-files/**").authenticated()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2 // This tells Spring that your server is a resource server using JWTs for authentication

@@ -29,6 +29,14 @@ services:
       - db_data:/var/lib/postgresql/data
     restart: always
 
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    ports:
+      - "5050:8080"
+    depends_on:
+      - db
+    restart: always
   
   keycloak:
     image: quay.io/keycloak/keycloak:26.3.0

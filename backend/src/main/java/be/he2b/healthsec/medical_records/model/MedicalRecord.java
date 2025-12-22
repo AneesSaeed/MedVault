@@ -19,7 +19,11 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "medical_records")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter 
+@Setter 
+@NoArgsConstructor 
+@AllArgsConstructor 
+@Builder
 public class MedicalRecord {
 
     @Id

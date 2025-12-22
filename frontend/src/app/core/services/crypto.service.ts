@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 /**
  * Service de chiffrement utilisant Web Crypto API
- * 
+ *
  * Architecture:
  * - Chaque utilisateur a une paire de clés RSA (publique/privée)
  * - Les patients ont une clé symétrique AES pour chiffrer leurs dossiers médicaux
@@ -86,9 +86,9 @@ export class CryptoService {
       .replace(pemHeader, '')
       .replace(pemFooter, '')
       .replace(/\s/g, '');
-    
+
     const binaryDer = this.base64ToArrayBuffer(pemContents);
-    
+
     return await window.crypto.subtle.importKey(
       'spki',
       binaryDer,
@@ -113,9 +113,9 @@ export class CryptoService {
       .replace(pemHeader, '')
       .replace(pemFooter, '')
       .replace(/\s/g, '');
-    
+
     const binaryDer = this.base64ToArrayBuffer(pemContents);
-    
+
     return await window.crypto.subtle.importKey(
       'pkcs8',
       binaryDer,
@@ -167,7 +167,7 @@ export class CryptoService {
     // Exporte la clé AES en raw
     const exportedAES = await window.crypto.subtle.exportKey('raw', aesKey);
     const aesKeyArray = new Uint8Array(exportedAES);
-    
+
     // Chiffre avec RSA-OAEP
     const encrypted = await window.crypto.subtle.encrypt(
       {
@@ -188,7 +188,7 @@ export class CryptoService {
    */
   async decryptAESKeyWithRSA(encryptedAESKeyBase64: string, privateKey: CryptoKey): Promise<CryptoKey> {
     const encryptedData = this.base64ToArrayBuffer(encryptedAESKeyBase64);
-    
+
     // Déchiffre avec RSA-OAEP
     const decrypted = await window.crypto.subtle.decrypt(
       {
@@ -211,10 +211,10 @@ export class CryptoService {
   async encryptWithAES(data: string, key: CryptoKey): Promise<{ encrypted: string; iv: string }> {
     const encoder = new TextEncoder();
     const dataBuffer = encoder.encode(data);
-    
+
     // Génère un IV (Initialization Vector) aléatoire
     const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 12 bytes pour AES-GCM
-    
+
     const encrypted = await window.crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
@@ -231,28 +231,94 @@ export class CryptoService {
   }
 
   /**
-   * Déchiffre des données avec AES-GCM
-   * @param encryptedBase64 Données chiffrées en base64
-   * @param ivBase64 IV en base64
+   * Chiffre des données binaires avec AES-GCM
+   * @param data ArrayBuffer (bytes)
    * @param key Clé AES
-   * @returns Promise avec les données déchiffrées (string)
+   * @returns Promise avec {encrypted: base64, iv: base64}
    */
+  async encryptBytesWithAES(data: ArrayBuffer, key: CryptoKey): Promise<{ encrypted: string; iv: string }> {
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+    const encrypted = await window.crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      data
+    );
+
+    return {
+      encrypted: this.arrayBufferToBase64(encrypted),
+      iv: this.arrayBufferToBase64(iv),
+    };
+  }
+
+
+  /**
+   * Pack iv + ciphertext into one Uint8Array:
+   * [ 12 bytes IV | ciphertext bytes ]
+   */
+  packIvAndCiphertext(ivBase64: string, encryptedBase64: string): Uint8Array {
+    const iv = new Uint8Array(this.base64ToArrayBuffer(ivBase64));
+    const ct = new Uint8Array(this.base64ToArrayBuffer(encryptedBase64));
+
+    const out = new Uint8Array(iv.length + ct.length);
+    out.set(iv, 0);
+    out.set(ct, iv.length);
+    return out;
+  }
+
+  /**
+   * Unpack iv + ciphertext from one Uint8Array
+   */
+  unpackIvAndCiphertext(packed: ArrayBuffer): { ivBase64: string; encryptedBase64: string } {
+    const bytes = new Uint8Array(packed);
+    const iv = bytes.slice(0, 12);
+    const ct = bytes.slice(12);
+
+    return {
+      ivBase64: this.arrayBufferToBase64(iv.buffer),
+      encryptedBase64: this.arrayBufferToBase64(ct.buffer),
+    };
+  }
+
+  unpackIvCipherFromBase64(packedBase64: string): { ivBase64: string; encryptedBase64: string } {
+    const combined = this.base64ToUint8Array(packedBase64);
+    const iv = combined.slice(0, 12);
+    const enc = combined.slice(12);
+
+    return {
+      ivBase64: this.uint8ArrayToBase64(iv),
+      encryptedBase64: this.uint8ArrayToBase64(enc),
+    };
+  }
+
+
+  async decryptBytesWithAES(encryptedBase64: string, ivBase64: string, key: CryptoKey): Promise<ArrayBuffer> {
+    const encrypted = this.base64ToArrayBuffer(encryptedBase64);
+    const iv = this.base64ToUint8Array(ivBase64);
+
+    return await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encrypted
+    );
+  }
+
+
+
   async decryptWithAES(encryptedBase64: string, ivBase64: string, key: CryptoKey): Promise<string> {
     const encrypted = this.base64ToArrayBuffer(encryptedBase64);
-    const iv = this.base64ToArrayBuffer(ivBase64);
-    
+    const iv = this.base64ToUint8Array(ivBase64);
+
     const decrypted = await window.crypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv: iv,
-      },
+      { name: 'AES-GCM', iv },
       key,
       encrypted
     );
 
-    const decoder = new TextDecoder();
-    return decoder.decode(decrypted);
+    return new TextDecoder().decode(decrypted);
   }
+
+
 
   /**
    * Stocke une clé privée dans le localStorage (à sécuriser davantage en production)
@@ -317,7 +383,7 @@ export class CryptoService {
   async encryptWithRSA(data: string, publicKey: CryptoKey): Promise<string> {
     const encoder = new TextEncoder();
     const dataBuffer = encoder.encode(data);
-    
+
     const encrypted = await window.crypto.subtle.encrypt(
       {
         name: 'RSA-OAEP',
@@ -337,7 +403,7 @@ export class CryptoService {
    */
   async decryptWithRSA(encryptedBase64: string, privateKey: CryptoKey): Promise<string> {
     const encrypted = this.base64ToArrayBuffer(encryptedBase64);
-    
+
     const decrypted = await window.crypto.subtle.decrypt(
       {
         name: 'RSA-OAEP',
@@ -369,5 +435,25 @@ export class CryptoService {
     }
     return bytes.buffer;
   }
+
+
+  packIvCipherToBase64(ivBase64: string, encryptedBase64: string): string {
+    const packed = this.packIvAndCiphertext(ivBase64, encryptedBase64); // Uint8Array
+    return this.uint8ArrayToBase64(packed);
+  }
+
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  private base64ToUint8Array(base64: string): Uint8Array {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
 }
 

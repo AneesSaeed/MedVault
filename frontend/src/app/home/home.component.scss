@@ -1,0 +1,138 @@
+.files-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+
+  h2 {
+    margin: 0 0 12px;
+    font-size: 18px;
+    line-height: 1.2;
+  }
+}
+
+.upload-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap; // prevents overflow on small screens
+
+  input[type="file"] {
+    max-width: 100%;
+  }
+
+  button {
+    margin-left: auto; // keeps Upload aligned to the right when space allows
+  }
+
+  .muted {
+    flex: 1 1 320px; // gives the helper text room while still wrapping nicely
+    min-width: 240px;
+  }
+}
+
+.files-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; // improves truncation/wrapping behavior
+
+  thead th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+  }
+
+  th,
+  td {
+    border-bottom: 1px solid #eee;
+    padding: 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    font-weight: 600;
+  }
+
+  tbody tr:hover {
+    background: #fafafa;
+  }
+
+  // Make long filenames behave nicely even without changing the template
+  td:first-child {
+    word-break: break-word;
+  }
+
+  // Keep action columns compact
+  td:nth-child(4),
+  td:nth-child(5),
+  td:nth-child(6) {
+    white-space: nowrap;
+  }
+}
+
+.overwrite-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap; // file input + button won't overflow
+
+  input[type="file"] {
+    max-width: 100%;
+  }
+}
+
+.error {
+  color: #b00020;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(176, 0, 32, 0.35);
+  border-radius: 6px;
+  background: rgba(176, 0, 32, 0.05);
+}
+
+.muted {
+  color: #666;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+button.danger {
+  border: 1px solid #b00020;
+  color: #b00020;
+}
+
+button {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(0, 0, 0, 0.35);
+    outline-offset: 2px;
+  }
+}
+
+input[type="file"] {
+  font-size: 14px;
+
+  &:focus-visible {
+    outline: 2px solid rgba(0, 0, 0, 0.35);
+    outline-offset: 2px;
+  }
+}
