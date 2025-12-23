@@ -9,6 +9,8 @@ import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { MedicalFile } from '../core/models/medical-file.model';
 import { CryptoService } from '../core/services/crypto.service';
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
+import { PatientDataService } from '../core/services/patient-data.service';
+import { PatientData } from '../core/models/patient-data.model';
 
 type MedicalFileVM = MedicalFile & {
   fileName: string;
@@ -30,6 +32,11 @@ export class HomeComponent implements OnInit {
   overwriteSelection: Record<string, File | null> = {};
 
   filesVm: MedicalFileVM[] = [];
+  
+  // Patient data récupérée depuis la BD (plus depuis localStorage)
+  patientData: PatientData | null = null;
+  patientDataLoading = false;
+  patientDataError: string | null = null;
 
   constructor(
     private userService: UserService,
@@ -38,7 +45,8 @@ export class HomeComponent implements OnInit {
     private router: Router,
     private medicalFilesApi: MedicalFilesApi,
     private patientDoctorService: PatientDoctorService,
-    private crypto: CryptoService
+    private crypto: CryptoService,
+    private patientDataService: PatientDataService
   ) {}
 
   get role(): 'PATIENT' | 'DOCTOR' | string {
@@ -61,6 +69,7 @@ export class HomeComponent implements OnInit {
         this.userContext.loadUserContext$().subscribe({
           next: () => {
             if (this.role === 'PATIENT') {
+              this.loadPatientData();
               this.refresh();
             }
           },
@@ -75,6 +84,28 @@ export class HomeComponent implements OnInit {
     });
   }
 
+
+  /**
+   * Charge les données du patient depuis la BD (plus depuis localStorage)
+   */
+  async loadPatientData(): Promise<void> {
+    this.patientDataLoading = true;
+    this.patientDataError = null;
+
+    try {
+      const userId = this.userContext.userId;
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+
+      this.patientData = await this.patientDataService.getPatientData(userId, this.keyId);
+    } catch (e: any) {
+      console.error('Failed to load patient data:', e);
+      this.patientDataError = e?.message || 'Failed to load patient data';
+    } finally {
+      this.patientDataLoading = false;
+    }
+  }
 
   refresh(): void {
     this.loading = true;
@@ -180,7 +211,7 @@ export class HomeComponent implements OnInit {
       const bytes = await file.arrayBuffer();
       const encFile = await this.crypto.encryptBytesWithAES(bytes, fileKey);
       const packed = this.crypto.packIvAndCiphertext(encFile.iv, encFile.encrypted);
-      const blob = new Blob([packed], { type: 'application/octet-stream' });
+      const blob = new Blob([packed.buffer] as BlobPart[], { type: 'application/octet-stream' });
 
       // 4) wrap per-file key for patient
       const wrappedKeyForPatientBase64 = await this.crypto.encryptAESKeyWithRSA(fileKey, pubKey);
@@ -290,7 +321,7 @@ export class HomeComponent implements OnInit {
       const bytes = await file.arrayBuffer();
       const encFile = await this.crypto.encryptBytesWithAES(bytes, fileKey);
       const packed = this.crypto.packIvAndCiphertext(encFile.iv, encFile.encrypted);
-      const blob = new Blob([packed], { type: 'application/octet-stream' });
+      const blob = new Blob([packed.buffer] as BlobPart[], { type: 'application/octet-stream' });
 
       const form = new FormData();
       form.append('uploadDateEncBase64', uploadDateEncBase64);

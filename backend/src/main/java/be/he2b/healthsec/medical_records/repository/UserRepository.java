@@ -13,7 +13,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByKeycloakId(String keycloakId);
     
     Optional<User> findByKeycloakId(String keycloakId);
-    
-    List<User> findByRole(UserType role);
 
 }

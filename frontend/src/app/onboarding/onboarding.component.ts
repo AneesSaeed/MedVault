@@ -45,22 +45,22 @@ export class OnboardingComponent {
       this.cryptoService.storePublicKey(keycloakId, publicKeyPEM);
 
       if (this.role === 'PATIENT') {
-        // PATIENT : toutes les données personnelles sont chiffrées côté client
+        // PATIENT : créer clé AES, chiffrer données, créer PatientSymmetricKey
 
-        // 4. Génère une clé symétrique AES SEULEMENT pour les patients
+        // 4. Génère une clé symétrique AES pour les données du patient
         const aesKey = await this.cryptoService.generateAESKey();
 
-        // 5. Stocke la clé AES localement (pour usage futur côté client)
-        const aesKeyBase64 = await this.cryptoService.exportAESKey(aesKey);
-        this.cryptoService.storeAESKey(keycloakId, aesKeyBase64);
-
-        // 6. Chiffre toutes les données personnelles avec la clé AES
+        // 5. Chiffre toutes les données personnelles avec la clé AES
         const [firstNameEnc, lastNameEnc, emailEnc, dobEnc] = await Promise.all([
           this.cryptoService.encryptWithAES(this.auth.firstName, aesKey),
           this.cryptoService.encryptWithAES(this.auth.lastName, aesKey),
           this.cryptoService.encryptWithAES(this.auth.email, aesKey),
           this.cryptoService.encryptWithAES(this.dateOfBirth, aesKey)
         ]);
+
+        // 6. NOUVEAU: Chiffre la clé AES avec la clé publique RSA du patient
+        //    (pour que le patient puisse la récupérer depuis la DB sans localStorage)
+        const symmetricKeyEnc = await this.cryptoService.encryptAESKeyWithRSA(aesKey, publicKey);
 
         // Concatène IV + cipher en un seul buffer Base64 pour le backend
         const concatEncrypted = (iv: string, encrypted: string): string => {
@@ -77,7 +77,8 @@ export class OnboardingComponent {
           lastNameEncBase64: concatEncrypted(lastNameEnc.iv, lastNameEnc.encrypted),
           emailEncBase64: concatEncrypted(emailEnc.iv, emailEnc.encrypted),
           dateOfBirthEncBase64: concatEncrypted(dobEnc.iv, dobEnc.encrypted),
-          publicKeyPEM: publicKeyPEM
+          publicKeyPEM: publicKeyPEM,
+          symmetricKeyEncBase64: symmetricKeyEnc // NOUVEAU: clé AES chiffrée
         };
 
         this.userService.createPatient(payload)

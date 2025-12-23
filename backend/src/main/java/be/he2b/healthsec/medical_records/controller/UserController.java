@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import be.he2b.healthsec.medical_records.dto.CreateDoctorDTO;
 import be.he2b.healthsec.medical_records.dto.CreatePatientDTO;
+import be.he2b.healthsec.medical_records.dto.PatientDataDTO;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.service.UserService;
 
@@ -74,7 +76,8 @@ public class UserController {
                 dto.getLastNameEncBase64(),
                 dto.getEmailEncBase64(),
                 dto.getDateOfBirthEncBase64(),
-                dto.getPublicKeyPEM()
+                dto.getPublicKeyPEM(),
+                dto.getSymmetricKeyEncBase64()
             );
 
             return ResponseEntity.ok(
@@ -113,6 +116,33 @@ public class UserController {
 
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // --------------------------------------------------------------
+    //  Get patient data with encrypted symmetric key
+    // --------------------------------------------------------------
+    @GetMapping("/patient/{patientId}/data")
+    public ResponseEntity<?> getPatientData(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String patientId) {
+        try {
+            String keycloakId = jwt.getSubject();
+            
+            // Récupérer l'ID UUID du patient depuis le keycloakId pour vérifier
+            Optional<User> userOpt = userService.findByKeycloakId(keycloakId);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(401).body(Map.of("error", "User not authenticated"));
+            }
+            java.util.UUID userId = userOpt.get().getId();
+            java.util.UUID patientUUID = java.util.UUID.fromString(patientId);
+
+            PatientDataDTO patientData = userService.getPatientData(patientUUID, userId);
+            return ResponseEntity.ok(patientData);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(403)
                 .body(Map.of("error", e.getMessage()));
         }
     }

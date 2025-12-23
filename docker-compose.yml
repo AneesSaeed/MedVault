@@ -68,6 +68,8 @@ services:
       - ./keycloak-config:/opt/keycloak/data/import
       # Read-only: Keycloak consumes cert material, cannot modify it
       - internal_certs:/certs/internal:ro
+      # IMPORTANT: Persiste la base de données Keycloak (H2) pour garder les utilisateurs entre les redémarrages
+      - keycloak_data:/opt/keycloak/data/h2
     restart: always
 
   backend:
@@ -142,4 +144,5 @@ services:
         condition: service_started
 volumes:
   db_data:
+  keycloak_data:
   internal_certs:

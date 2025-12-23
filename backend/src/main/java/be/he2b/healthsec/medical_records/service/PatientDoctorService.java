@@ -15,12 +15,16 @@ import be.he2b.healthsec.medical_records.model.Doctor;
 import be.he2b.healthsec.medical_records.model.Patient;
 import be.he2b.healthsec.medical_records.model.PatientDoctor;
 import be.he2b.healthsec.medical_records.model.PatientDoctorId;
+import be.he2b.healthsec.medical_records.model.PatientSymmetricKey;
+import be.he2b.healthsec.medical_records.model.PatientSymmetricKeyId;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.dto.DoctorInfoDTO;
+import be.he2b.healthsec.medical_records.dto.DoctorPatientDTO;
 import be.he2b.healthsec.medical_records.repository.DoctorRepository;
 import be.he2b.healthsec.medical_records.repository.MedicalFileKeyRepository;
 import be.he2b.healthsec.medical_records.repository.PatientDoctorRepository;
 import be.he2b.healthsec.medical_records.repository.PatientRepository;
+import be.he2b.healthsec.medical_records.repository.PatientSymmetricKeyRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -30,11 +34,17 @@ public class PatientDoctorService {
     private final MedicalFileKeyRepository medicalFileKeyRepository;
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
+    private final PatientSymmetricKeyRepository patientSymmetricKeyRepository;
 
     /**
      * Ajoute un médecin à la liste des médecins d'un patient.
      * 
      * Selon l'énoncé : "A patient can add or remove a doctor to his list of appointed doctors."
+     * 
+     * Cette méthode:
+     * 1. Crée la relation PatientDoctor
+     * 2. NOUVEAU: Crée aussi une ligne PatientSymmetricKey pour le docteur
+     *    (la clé symétrique du patient chiffrée avec la clé publique RSA du docteur)
      * 
      * @param patientId ID du patient
      * @param doctorId ID du médecin
@@ -79,6 +89,18 @@ public class PatientDoctorService {
             .build();
 
         patientDoctorRepository.save(patientDoctor);
+
+        // NOUVEAU: Créer une entrée PatientSymmetricKey pour le docteur
+        // Cela permet au docteur de récupérer la clé symétrique du patient
+        // (chiffrée avec sa clé publique) depuis la DB pour déchiffrer les données patient
+        PatientSymmetricKey doctorKeyEntry = PatientSymmetricKey.builder()
+            .id(new PatientSymmetricKeyId(patientId, doctorId))
+            .patient(patient)
+            .recipientUser(doctor.getUser())
+            .wrappedSymmetricKeyEnc(encryptedPatientAESKey)
+            .build();
+
+        patientSymmetricKeyRepository.save(doctorKeyEntry);
 
         return "Doctor added to patient's list successfully";
     }
@@ -135,6 +157,11 @@ public class PatientDoctorService {
     /**
      * Supprime un médecin de la liste des médecins d'un patient.
      * 
+     * Supprime:
+     * 1. Les clés de fichiers médicaux chiffrées pour ce docteur
+     * 2. L'entrée PatientSymmetricKey pour ce docteur (révoque accès aux données patient)
+     * 3. La relation PatientDoctor elle-même
+     * 
      * @param patientId ID du patient
      * @param doctorId ID du médecin
      */
@@ -145,10 +172,13 @@ public class PatientDoctorService {
             throw new IllegalArgumentException("Doctor is not associated with this patient");
         }
         
-        // 1) revoke access: delete wrapped file keys for this doctor on this patient’s files
+        // 1) Revoke access to medical files: delete wrapped file keys for this doctor on this patient's files
         medicalFileKeyRepository.deleteDoctorKeysForPatient(doctorId, patientId);
 
-        // 2) remove the appointment link
+        // 2) NOUVEAU: Revoke access to patient data: delete PatientSymmetricKey for this doctor
+        patientSymmetricKeyRepository.deleteByPatientAndDoctor(patientId, doctorId);
+
+        // 3) Remove the appointment link
         patientDoctorRepository.deleteById(id);
     }
 
@@ -205,49 +235,20 @@ public class PatientDoctorService {
      * @param doctorId ID du médecin
      * @return Liste des patients avec données chiffrées + clé AES chiffrée
      */
-    public List<?> getDoctorPatients(UUID doctorId) {
+    public List<DoctorPatientDTO> getDoctorPatients(UUID doctorId) {
         List<PatientDoctor> relations = patientDoctorRepository.findByDoctorId(doctorId);
         return relations.stream()
             .map(rel -> {
                 Patient patient = rel.getPatient();
-                return Map.of(
-                    "patientId", patient.getId().toString(),
-                    "firstNameEnc", Base64.getEncoder().encodeToString(patient.getFirstNameEnc()),
-                    "lastNameEnc", Base64.getEncoder().encodeToString(patient.getLastNameEnc()),
-                    "emailEnc", Base64.getEncoder().encodeToString(patient.getEmailEnc()),
-                    "encryptedAESKey", Base64.getEncoder().encodeToString(rel.getEncryptedSymmetricKeyForDoctor())
-                );
+                return DoctorPatientDTO.builder()
+                    .patientId(patient.getId().toString())
+                    .firstNameEnc(Base64.getEncoder().encodeToString(patient.getFirstNameEnc()))
+                    .lastNameEnc(Base64.getEncoder().encodeToString(patient.getLastNameEnc()))
+                    .emailEnc(Base64.getEncoder().encodeToString(patient.getEmailEnc()))
+                    .encryptedAESKey(Base64.getEncoder().encodeToString(rel.getEncryptedSymmetricKeyForDoctor()))
+                    .build();
             })
             .collect(Collectors.toList());
-    }
-
-    /**
-     * Récupère les données chiffrées d'un patient spécifique.
-     * Vérifie que le médecin a accès au patient via une relation PatientDoctor.
-     * 
-     * @param doctorId ID du médecin
-     * @param patientId ID du patient
-     * @return Données chiffrées du patient + clé AES chiffrée
-     */
-    public Map<String, String> getPatientEncryptedData(UUID doctorId, UUID patientId) {
-        // Vérifie que la relation PatientDoctor existe
-        PatientDoctorId id = new PatientDoctorId(patientId, doctorId);
-        Optional<PatientDoctor> relationOpt = patientDoctorRepository.findById(id);
-        if (relationOpt.isEmpty()) {
-            throw new IllegalArgumentException("Doctor does not have access to this patient");
-        }
-
-        PatientDoctor relation = relationOpt.get();
-        Patient patient = relation.getPatient();
-
-        return Map.of(
-            "patientId", patient.getId().toString(),
-            "firstNameEnc", Base64.getEncoder().encodeToString(patient.getFirstNameEnc()),
-            "lastNameEnc", Base64.getEncoder().encodeToString(patient.getLastNameEnc()),
-            "emailEnc", Base64.getEncoder().encodeToString(patient.getEmailEnc()),
-            "dateOfBirthEnc", Base64.getEncoder().encodeToString(patient.getDateOfBirthEnc()),
-            "encryptedAESKey", Base64.getEncoder().encodeToString(relation.getEncryptedSymmetricKeyForDoctor())
-        );
     }
 
 }

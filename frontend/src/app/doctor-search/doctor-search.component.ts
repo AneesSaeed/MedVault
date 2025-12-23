@@ -4,6 +4,8 @@ import { CryptoService } from '../core/services/crypto.service';
 import { AuthService } from '../core/services/auth.service';
 import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { AddDoctorHelper } from '../core/services/add-doctor-helper';
+import { PatientDataApi } from '../core/api/patient-data.api';
+import { UserContextService } from '../core/services/user-context.service';
 
 type Doctor = {
   doctorId: string;
@@ -32,9 +34,16 @@ export class DoctorSearchComponent implements OnInit {
     private patientDoctorService: PatientDoctorService,
     private cryptoService: CryptoService,
     private medicalFilesApi: MedicalFilesApi,
-    private auth: AuthService
+    private auth: AuthService,
+    private patientDataApi: PatientDataApi,
+    private userContext: UserContextService
   ) {
-    this.helper = new AddDoctorHelper(this.cryptoService, this.patientDoctorService, this.medicalFilesApi);
+    this.helper = new AddDoctorHelper(
+      this.cryptoService,
+      this.patientDoctorService,
+      this.medicalFilesApi,
+      this.patientDataApi
+    );
   }
 
   ngOnInit(): void {
@@ -65,7 +74,11 @@ export class DoctorSearchComponent implements OnInit {
     this.addingId = doctor.doctorId;
     try {
       const keycloakId = this.auth.sub;
-      await this.helper.addDoctorToPatient(doctor.doctorId, keycloakId);
+      const patientUserId = this.userContext.userId;
+      if (!patientUserId) {
+        throw new Error('Patient user ID not found');
+      }
+      await this.helper.addDoctorToPatient(doctor.doctorId, patientUserId, keycloakId);
       this.message = `Médecin ajouté: ${doctor.firstName} ${doctor.lastName}`;
     } catch (e: any) {
       this.error = e?.message || 'Échec de l\'ajout du médecin';

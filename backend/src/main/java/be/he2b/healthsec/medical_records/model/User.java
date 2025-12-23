@@ -47,6 +47,7 @@ public class User {
     @Column(name = "public_key", columnDefinition = "TEXT")
     private String publicKey; // clé publique PEM/base64 (peut être très longue, ~450+ caractères)
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

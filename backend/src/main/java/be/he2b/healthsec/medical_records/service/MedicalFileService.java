@@ -42,8 +42,13 @@ public class MedicalFileService {
     // ------------------------------------------------------------
     @Transactional(readOnly = true)
     public List<MedicalFileInfoDTO> listPatientFiles(UUID patientId) {
+        // MedicalRecord is created on first file upload, so return empty list if none exists yet
         MedicalRecord record = medicalRecordRepository.findById(patientId)
-            .orElseThrow(() -> new IllegalArgumentException("Medical record not found"));
+            .orElse(null);
+        
+        if (record == null) {
+            return List.of(); // No medical record yet = no files uploaded
+        }
 
         return medicalFileRepository.findByMedicalRecordId(record.getId()).stream()
             .map(f -> toInfoDtoForRecipient(f, patientId))
@@ -61,8 +66,13 @@ public class MedicalFileService {
             throw new IllegalArgumentException("Doctor does not have access to this patient");
         }
 
+        // MedicalRecord is created on first file upload, so return empty list if none exists yet
         MedicalRecord record = medicalRecordRepository.findById(patientId)
-            .orElseThrow(() -> new IllegalArgumentException("Medical record not found"));
+            .orElse(null);
+        
+        if (record == null) {
+            return List.of(); // No medical record yet = no files uploaded
+        }
 
         return medicalFileRepository.findByMedicalRecordId(record.getId()).stream()
             .map(f -> toInfoDtoForRecipient(f, doctorId))

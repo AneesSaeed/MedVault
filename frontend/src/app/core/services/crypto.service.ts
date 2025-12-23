@@ -129,16 +129,6 @@ export class CryptoService {
   }
 
   /**
-   * Exporte une clé AES en format base64 (pour stockage)
-   * @param key Clé AES CryptoKey
-   * @returns Promise avec la clé en base64
-   */
-  async exportAESKey(key: CryptoKey): Promise<string> {
-    const exported = await window.crypto.subtle.exportKey('raw', key);
-    return this.arrayBufferToBase64(exported);
-  }
-
-  /**
    * Importe une clé AES depuis le format base64
    * @param base64Key Clé en base64
    * @returns Promise avec la clé AES CryptoKey
@@ -218,7 +208,7 @@ export class CryptoService {
     const encrypted = await window.crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
-        iv: iv,
+        iv: iv as unknown as BufferSource,
       },
       key,
       dataBuffer
@@ -226,7 +216,7 @@ export class CryptoService {
 
     return {
       encrypted: this.arrayBufferToBase64(encrypted),
-      iv: this.arrayBufferToBase64(iv)
+      iv: this.arrayBufferToBase64(iv.buffer)
     };
   }
 
@@ -240,14 +230,14 @@ export class CryptoService {
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
 
     const encrypted = await window.crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
+      { name: 'AES-GCM', iv: iv as unknown as BufferSource },
       key,
       data
     );
 
     return {
       encrypted: this.arrayBufferToBase64(encrypted),
-      iv: this.arrayBufferToBase64(iv),
+      iv: this.arrayBufferToBase64(iv.buffer),
     };
   }
 
@@ -280,10 +270,10 @@ export class CryptoService {
 
   async decryptBytesWithAES(encryptedBase64: string, ivBase64: string, key: CryptoKey): Promise<ArrayBuffer> {
     const encrypted = this.base64ToArrayBuffer(encryptedBase64);
-    const iv = this.base64ToUint8Array(ivBase64);
+    const ivArray = this.base64ToUint8Array(ivBase64);
 
     return await window.crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
+      { name: 'AES-GCM', iv: ivArray as unknown as BufferSource },
       key,
       encrypted
     );
@@ -293,10 +283,10 @@ export class CryptoService {
 
   async decryptWithAES(encryptedBase64: string, ivBase64: string, key: CryptoKey): Promise<string> {
     const encrypted = this.base64ToArrayBuffer(encryptedBase64);
-    const iv = this.base64ToUint8Array(ivBase64);
+    const ivArray = this.base64ToUint8Array(ivBase64);
 
     const decrypted = await window.crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
+      { name: 'AES-GCM', iv: ivArray as unknown as BufferSource },
       key,
       encrypted
     );
@@ -342,25 +332,6 @@ export class CryptoService {
     return localStorage.getItem(`public_key_${keyId}`);
   }
 
-  /**
-   * Stocke une clé AES dans le localStorage (chiffrée avec la clé privée RSA de l'utilisateur)
-   * @param keyId Identifiant unique pour la clé
-   * @param aesKeyBase64 Clé AES en base64
-   */
-  storeAESKey(keyId: string, aesKeyBase64: string): void {
-    localStorage.setItem(`aes_key_${keyId}`, aesKeyBase64);
-  }
-
-  /**
-   * Récupère une clé AES depuis le localStorage
-   * @param keyId Identifiant unique pour la clé
-   * @returns Clé AES en base64 ou null
-   */
-  getAESKey(keyId: string): string | null {
-    return localStorage.getItem(`aes_key_${keyId}`);
-  }
-
-
   // ========== Helpers ==========
 
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -395,7 +366,8 @@ export class CryptoService {
 
   private base64ToUint8Array(base64: string): Uint8Array {
     const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
+    const buffer = new ArrayBuffer(binary.length);
+    const bytes = new Uint8Array(buffer);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     return bytes;
   }

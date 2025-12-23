@@ -68,3 +68,8 @@ certs/
 *.pem
 *.key
 *.crt
+
+# Documentation
+*.md
+!README.md
+*.pdf

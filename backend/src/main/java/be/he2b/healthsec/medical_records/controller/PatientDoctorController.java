@@ -181,7 +181,8 @@ public class PatientDoctorController {
             UUID doctorId = user.getId();
             UUID patientUuid = UUID.fromString(patientId);
 
-            var patientData = patientDoctorService.getPatientEncryptedData(doctorId, patientUuid);
+            // Use UserService.getPatientData() which validates access via PatientSymmetricKey
+            var patientData = userService.getPatientData(patientUuid, doctorId);
             return ResponseEntity.ok(patientData);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()

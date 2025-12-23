@@ -3,6 +3,7 @@ import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { CryptoService } from '../core/services/crypto.service';
 import { AuthService } from '../core/services/auth.service';
 import { MedicalFilesApi } from '../core/api/medical-files.api';
+import { PatientDataService } from '../core/services/patient-data.service';
 
 type RawPatient = {
   patientId: string;
@@ -57,7 +58,8 @@ export class MyPatientsComponent implements OnInit {
     private service: PatientDoctorService,
     private crypto: CryptoService,
     private auth: AuthService,
-    private medicalFilesApi: MedicalFilesApi
+    private medicalFilesApi: MedicalFilesApi,
+    private patientDataService: PatientDataService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -69,26 +71,37 @@ export class MyPatientsComponent implements OnInit {
     this.error = null;
 
     try {
+      // Récupère la liste des IDs patients
       const res = await this.service.getMyPatients().toPromise();
       const list: RawPatient[] = (res?.patients ?? []) as RawPatient[];
 
-      const privatePem = this.crypto.getPrivateKey(this.auth.sub);
-      if (!privatePem) {
-        throw new Error(
-          "Clé privée introuvable dans le navigateur (connexion requise sur l'appareil qui a généré la clé)"
-        );
-      }
-      const privateKey = await this.crypto.importPrivateKey(privatePem);
-
       const decrypted: DecryptedPatient[] = [];
+      
+      // Pour chaque patient, utilise PatientDataService pour déchiffrer
       for (const item of list) {
-        const aesKey = await this.crypto.decryptAESKeyWithRSA(item.encryptedAESKey, privateKey);
+        try {
+          const patientData = await this.patientDataService.getPatientData(
+            item.patientId,
+            this.auth.sub
+          );
 
-        const firstName = await this.decryptCombinedAESField(item.firstNameEnc, aesKey);
-        const lastName = await this.decryptCombinedAESField(item.lastNameEnc, aesKey);
-        const email = await this.decryptCombinedAESField(item.emailEnc, aesKey);
-
-        decrypted.push({ patientId: item.patientId, firstName, lastName, email });
+          decrypted.push({
+            patientId: item.patientId,
+            firstName: patientData.firstName,
+            lastName: patientData.lastName,
+            email: patientData.email,
+            dob: patientData.dateOfBirth
+          });
+        } catch (e: any) {
+          console.error(`Failed to decrypt patient ${item.patientId}:`, e);
+          // On ajoute quand même avec données partielles
+          decrypted.push({
+            patientId: item.patientId,
+            firstName: '(erreur déchiffrement)',
+            lastName: '',
+            email: ''
+          });
+        }
       }
 
       this.patients = decrypted;
@@ -107,23 +120,20 @@ export class MyPatientsComponent implements OnInit {
   }
 
   async loadDetails(p: DecryptedPatient): Promise<void> {
+    // Les détails sont déjà chargés via PatientDataService dans loadAndDecryptPatients
+    // Cette méthode n'est plus nécessaire mais on la garde pour compatibilité
     if (this.detailsLoading[p.patientId]) return;
     this.detailsLoading[p.patientId] = true;
 
     try {
-      const res = await this.service.getPatientData(p.patientId).toPromise();
-      const dateOfBirthEnc = res?.dateOfBirthEnc as string;
-      const encryptedAESKey = res?.encryptedAESKey as string;
-
-      const privatePem = this.crypto.getPrivateKey(this.auth.sub);
-      if (!privatePem) throw new Error('Clé privée introuvable');
-
-      const privateKey = await this.crypto.importPrivateKey(privatePem);
-      const aesKey = await this.crypto.decryptAESKeyWithRSA(encryptedAESKey, privateKey);
-
-      p.dob = await this.decryptCombinedAESField(dateOfBirthEnc, aesKey);
+      // Recharge les données si besoin
+      const patientData = await this.patientDataService.getPatientData(
+        p.patientId,
+        this.auth.sub
+      );
+      p.dob = patientData.dateOfBirth;
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load patient details:', e);
     } finally {
       this.detailsLoading[p.patientId] = false;
     }
