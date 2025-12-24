@@ -9,8 +9,6 @@ export class AuthService {
 
   constructor(private keycloak: KeycloakService) {
     this.data = keycloak.getKeycloakInstance().tokenParsed || {};
-    console.log(keycloak.getKeycloakInstance().token);
-    console.log(this.data);
   }
   get sub() {
     return this.data.sub;

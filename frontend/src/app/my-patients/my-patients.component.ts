@@ -5,6 +5,7 @@ import { KeyStoreService } from '../core/services/key-store.service';
 import { AuthService } from '../core/services/auth.service';
 import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { PatientDataService } from '../core/services/patient-data.service';
+import { FileUploadHelper } from '../core/services/file-upload.helper';
 
 type RawPatient = {
   patientId: string;
@@ -52,6 +53,12 @@ export class MyPatientsComponent implements OnInit {
   filesError: string | null = null;
   patientFiles: MedicalFileVM[] = [];
 
+  // upload state
+  uploadLoading = false;
+  uploadError: string | null = null;
+  uploadSuccess: string | null = null;
+  selectedFile: File | null = null;
+
   // details loading per patient (optional)
   detailsLoading: Record<string, boolean> = {};
 
@@ -61,7 +68,8 @@ export class MyPatientsComponent implements OnInit {
     private auth: AuthService,
     private medicalFilesApi: MedicalFilesApi,
     private patientDataService: PatientDataService,
-    private keyStore: KeyStoreService
+    private keyStore: KeyStoreService,
+    private fileUploadHelper: FileUploadHelper
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -236,6 +244,72 @@ export class MyPatientsComponent implements OnInit {
     })();
   }
 
+  // ===== UPLOAD FILE SECTION =====
+
+  /**
+   * Gère la sélection d'un fichier par le docteur
+   */
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedFile = input.files[0];
+      this.uploadError = null;
+      this.uploadSuccess = null;
+    }
+  }
+
+  /**
+   * Upload un fichier au patient sélectionné
+   * Processus:
+   * 1. Crée une clé AES temporaire
+   * 2. Chiffre le fichier avec cette clé
+   * 3. Chiffre la clé avec la clé publique RSA du patient
+   * 4. Envoie la demande au serveur
+   */
+  async uploadFileToPatient(): Promise<void> {
+    if (!this.selectedPatientId) {
+      this.uploadError = 'Sélectionnez un patient d\'abord';
+      return;
+    }
+    if (!this.selectedFile) {
+      this.uploadError = 'Sélectionnez un fichier d\'abord';
+      return;
+    }
+
+    this.uploadLoading = true;
+    this.uploadError = null;
+    this.uploadSuccess = null;
+
+    try {
+      const requestId = await this.fileUploadHelper.uploadFileForPatient(
+        this.selectedPatientId,
+        this.selectedFile
+      );
+
+      this.uploadSuccess = `Demande d'upload créée: ${this.selectedFile.name} (ID: ${requestId})`;
+      this.selectedFile = null;
+
+      // Réinitialiser le formulaire
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (input) input.value = '';
+    } catch (e: any) {
+      this.uploadError = e?.message || 'Erreur lors de l\'upload';
+      console.error('Upload error:', e);
+    } finally {
+      this.uploadLoading = false;
+    }
+  }
+
+  /**
+   * Annule la sélection du fichier
+   */
+  clearFileSelection(): void {
+    this.selectedFile = null;
+    this.uploadError = null;
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (input) input.value = '';
+  }
+
 
   // helpers
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -245,21 +319,6 @@ export class MyPatientsComponent implements OnInit {
     return btoa(binary);
   }
 
-  private async decryptCombinedAESField(combinedBase64: string, key: CryptoKey): Promise<string> {
-    const combined = this.base64ToUint8Array(combinedBase64);
-    const iv = combined.slice(0, 12);
-    const cipher = combined.slice(12);
+  // removed unused decryptCombinedAESField
 
-    const ivB64 = btoa(String.fromCharCode(...iv));
-    const cipherB64 = btoa(String.fromCharCode(...cipher));
-
-    return await this.crypto.decryptWithAES(cipherB64, ivB64, key);
-  }
-
-  private base64ToUint8Array(base64: string): Uint8Array {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes;
-  }
 }

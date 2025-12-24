@@ -1,13 +1,14 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { MedicalFile } from '../models/medical-file.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class MedicalFilesApi {
-  private readonly baseUrl = 'https://localhost/api/medical-files';
+  private readonly baseUrl = `${environment.apiBaseUrl}/medical-files`;
 
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   list(): Observable<{ files: MedicalFile[] }> {
     return this.http.get<{ files: MedicalFile[] }>(this.baseUrl);

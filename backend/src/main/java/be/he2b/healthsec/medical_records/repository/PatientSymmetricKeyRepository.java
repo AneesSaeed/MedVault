@@ -1,6 +1,5 @@
 package be.he2b.healthsec.medical_records.repository;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;

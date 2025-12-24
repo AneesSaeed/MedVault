@@ -15,7 +15,7 @@ export class UserContextService {
       tap((data) => {
         if (data) {
           this.role = data.role;
-          this.userId = data.userId;
+          this.userId = data.userId || data.keycloakId;
         } else {
           this.role = null;
           this.userId = null;

@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 /**
  * Modèle pour les données d'un patient avec sa clé symétrique chiffrée.
@@ -16,9 +17,9 @@ export interface PatientDataModel {
 
 @Injectable({ providedIn: 'root' })
 export class PatientDataApi {
-  private readonly baseUrl = 'https://localhost/api/patient';
+  private readonly baseUrl = `${environment.apiBaseUrl}/patient`;
 
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   /**
    * Récupère les données d'un patient avec sa clé symétrique chiffrée.

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Pre-commit hook: run lint and build to catch errors early
+
+echo "Running lint..."
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Lint failed. Fix errors before committing."
+  exit 1
+fi
+
+echo "✅ Lint passed."
+echo "Running build..."
+npm run build
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed. Fix errors before committing."
+  exit 1
+fi
+
+echo "✅ Build passed. Ready to commit!"
+exit 0

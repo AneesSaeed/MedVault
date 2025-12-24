@@ -1,14 +1,13 @@
 import { HttpClient } from "@angular/common/http";
-import { Injectable } from "@angular/core";
-import { Observable } from "rxjs";
+import { Injectable, inject } from "@angular/core";
+import { environment } from "../../../environments/environment";
 
 @Injectable({
   providedIn: 'root'
 })
 export class PatientDoctorService {
-  private api = 'https://localhost/api'
-
-  constructor(private http: HttpClient) {}
+  private api = environment.apiBaseUrl;
+  private http = inject(HttpClient);
 
   /**
    * Liste tous les médecins disponibles
@@ -31,6 +30,15 @@ export class PatientDoctorService {
    */
   getDoctorPublicKey(doctorId: string) {
     return this.http.get<any>(`${this.api}/patient-doctor/doctor/${doctorId}/public-key`);
+  }
+
+  /**
+   * Récupère la clé publique RSA d'un patient
+   * Permet au docteur de chiffrer la clé AES temporaire avant de proposer l'upload
+   * @param patientId ID du patient
+   */
+  getPatientPublicKey(patientId: string) {
+    return this.http.get<{ publicKeyPEM: string }>(`${this.api}/patient-doctor/patient/${patientId}/public-key`);
   }
 
   /**

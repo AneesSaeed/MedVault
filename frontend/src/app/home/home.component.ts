@@ -228,7 +228,6 @@ export class HomeComponent implements OnInit {
         next: async (resp) => {
           const createdFileId = resp.fileId;
           try {
-            const fileId = resp.fileId;
 
             // 5) Share this file key with all appointed doctors
             const doctorIds = (await this.patientDoctorService.getMyDoctors().toPromise())?.doctorIds ?? [];
@@ -441,12 +440,7 @@ export class HomeComponent implements OnInit {
 
   private readonly ALLOWED_EXT = new Set(['txt', 'pdf', 'doc', 'docx', 'jpeg', 'jpg', 'png']);
 
-  private isAllowedFile(file: File): boolean {
-    const ext = (file.name.split('.').pop() || '').toLowerCase();
-    const mimeOk = this.ALLOWED_MIME.has(file.type);
-    const extOk = this.ALLOWED_EXT.has(ext);
-    return (mimeOk || extOk) && file.size <= this.MAX_BYTES;
-  }
+  // isAllowedFile not used; rely on fileError checks instead
 
   private fileError(file: File): string | null {
     if (file.size > this.MAX_BYTES) return 'File too large (max 10 MB).';

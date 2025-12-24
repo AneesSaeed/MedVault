@@ -1,0 +1,53 @@
+<div class="page">
+  <h2>Demandes de fichiers médicaux</h2>
+
+  <div *ngIf="loading">Chargement des demandes…</div>
+  <div *ngIf="error" class="msg error">{{ error }}</div>
+  <div *ngIf="message" class="msg success">{{ message }}</div>
+
+  <div *ngIf="!loading && pendingFiles.length === 0" class="empty">
+    Aucune demande en attente.
+  </div>
+
+  <ul class="pending-files" *ngIf="!loading && pendingFiles.length">
+    <li *ngFor="let file of pendingFiles" class="pending-file">
+      <div class="file-info">
+        <div class="file-name">{{ file.fileName }}</div>
+        <div class="file-meta">
+          <span class="file-size">{{ formatFileSize(file.fileSize) }}</span>
+          <span class="file-type">{{ file.mimeType }}</span>
+          <span class="file-date">{{ formatDate(file.createdAt) }}</span>
+        </div>
+        <div class="file-doctor">
+          <strong>Proposé par:</strong> Médecin {{ file.uploaderDoctorId }}
+        </div>
+      </div>
+
+      <div class="file-actions">
+        <button
+          class="btn-view"
+          (click)="viewFile(file)"
+          [disabled]="viewingId === file.id || acceptingId === file.id || rejectingId === file.id"
+        >
+          {{ viewingId === file.id ? 'Téléchargement…' : 'Voir' }}
+        </button>
+
+        <button
+          class="btn-accept"
+          (click)="acceptRequest(file)"
+          [disabled]="viewingId === file.id || acceptingId === file.id || rejectingId === file.id"
+        >
+          {{ acceptingId === file.id ? 'Ajout…' : 'Accepter' }}
+        </button>
+
+        <button
+          class="btn-reject"
+          (click)="rejectRequest(file)"
+          [disabled]="viewingId === file.id || acceptingId === file.id || rejectingId === file.id"
+        >
+          {{ rejectingId === file.id ? 'Suppression…' : 'Supprimer' }}
+        </button>
+      </div>
+    </li>
+  </ul>
+</div>

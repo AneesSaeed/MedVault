@@ -204,6 +204,23 @@ public class PatientDoctorService {
     }
 
     /**
+     * Récupère la clé publique RSA d'un patient (PEM).
+     * (Contrôles d'accès à faire côté contrôleur)
+     */
+    public String getPatientPublicKey(UUID patientId) {
+        Optional<Patient> patientOpt = patientRepository.findById(patientId);
+        if (patientOpt.isEmpty()) {
+            throw new IllegalArgumentException("Patient not found");
+        }
+        User user = patientOpt.get().getUser();
+        String pem = user.getPublicKey();
+        if (pem == null || pem.isBlank()) {
+            throw new IllegalStateException("Patient does not have a public key");
+        }
+        return pem;
+    }
+
+    /**
      * Recherche des médecins par nom ou prénom (recherche insensible à la casse).
      * 
      * @param searchTerm Terme de recherche (nom ou prénom)

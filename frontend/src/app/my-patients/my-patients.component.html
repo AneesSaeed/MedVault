@@ -50,6 +50,38 @@
             <button (click)="$event.stopPropagation(); downloadPatientFile(f)">Télécharger</button>
           </li>
         </ul>
+
+        <!-- Upload section -->
+        <div class="upload-section">
+          <h4>Proposer un fichier médical</h4>
+          <div *ngIf="uploadError" class="msg error">{{ uploadError }}</div>
+          <div *ngIf="uploadSuccess" class="msg success">{{ uploadSuccess }}</div>
+
+          <div class="upload-form">
+            <input
+              type="file"
+              #fileInput
+              (change)="onFileSelected($event)"
+              [disabled]="uploadLoading"
+            />
+            <span *ngIf="selectedFile" class="file-name">{{ selectedFile.name }}</span>
+
+            <div class="upload-actions">
+              <button
+                (click)="uploadFileToPatient()"
+                [disabled]="!selectedFile || uploadLoading"
+              >
+                {{ uploadLoading ? 'Upload en cours…' : 'Envoyer le fichier' }}
+              </button>
+              <button
+                (click)="clearFileSelection()"
+                [disabled]="!selectedFile || uploadLoading"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </li>
   </ul>

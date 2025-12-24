@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CryptoService } from './crypto.service';
 import { KeyStoreService } from './key-store.service';
-import { PatientDataApi, PatientDataModel } from '../api/patient-data.api';
+import { PatientDataApi } from '../api/patient-data.api';
 import { PatientData } from '../models/patient-data.model';
 
 /**

@@ -54,6 +54,15 @@ export class CryptoService {
   }
 
   /**
+   * Génère un IV unique pour AES-GCM (par défaut 12 octets)
+   */
+  generateIV(length = 12): Uint8Array {
+    const iv = new Uint8Array(length);
+    window.crypto.getRandomValues(iv);
+    return iv;
+  }
+
+  /**
    * Exporte une clé publique RSA au format PEM (base64)
    * @param publicKey Clé publique CryptoKey
    * @returns Promise avec la clé publique en format PEM

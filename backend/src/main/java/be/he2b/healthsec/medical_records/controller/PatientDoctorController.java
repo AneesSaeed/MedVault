@@ -20,6 +20,7 @@ import be.he2b.healthsec.medical_records.dto.DoctorInfoDTO;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.model.UserType;
 import be.he2b.healthsec.medical_records.service.PatientDoctorService;
+import be.he2b.healthsec.medical_records.model.PatientDoctorId;
 import be.he2b.healthsec.medical_records.service.UserService;
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class PatientDoctorController {
     private final PatientDoctorService patientDoctorService;
     private final UserService userService;
+    private final be.he2b.healthsec.medical_records.repository.PatientDoctorRepository patientDoctorRepository;
 
     /**
      * Récupère la clé publique RSA d'un médecin.
@@ -44,6 +46,43 @@ public class PatientDoctorController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
                 .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Récupère la clé publique RSA d'un patient.
+     * Autorisé pour:
+     * - Le patient lui-même
+     * - Un médecin qui a une relation PatientDoctor avec ce patient
+     */
+    @GetMapping("/patient/{patientId}/public-key")
+    public ResponseEntity<?> getPatientPublicKey(@AuthenticationPrincipal Jwt jwt,
+                                                 @PathVariable String patientId) {
+        try {
+            UUID requestedPatientId = UUID.fromString(patientId);
+            String keycloakId = jwt.getSubject();
+            User caller = userService.findByKeycloakId(keycloakId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+            if (caller.getRole() == UserType.PATIENT) {
+                // Patient ne peut demander que sa propre clé publique
+                if (!caller.getId().equals(requestedPatientId)) {
+                    return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+                }
+            } else if (caller.getRole() == UserType.DOCTOR) {
+                // Docteur doit avoir une relation avec ce patient
+                PatientDoctorId relId = new PatientDoctorId(requestedPatientId, caller.getId());
+                if (!patientDoctorRepository.existsById(relId)) {
+                    return ResponseEntity.status(403).body(Map.of("error", "Doctor not linked to patient"));
+                }
+            } else {
+                return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+            }
+
+            String publicKeyPEM = patientDoctorService.getPatientPublicKey(requestedPatientId);
+            return ResponseEntity.ok(Map.of("publicKeyPEM", publicKeyPEM));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

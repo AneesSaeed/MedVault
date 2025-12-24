@@ -1,10 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
-import { CryptoService } from '../core/services/crypto.service';
 import { AuthService } from '../core/services/auth.service';
-import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { AddDoctorHelper } from '../core/services/add-doctor-helper';
-import { PatientDataApi } from '../core/api/patient-data.api';
 import { UserContextService } from '../core/services/user-context.service';
 
 type Doctor = {
@@ -30,10 +27,7 @@ export class DoctorSearchComponent implements OnInit {
 
   constructor(
     private patientDoctorService: PatientDoctorService,
-    private cryptoService: CryptoService,
-    private medicalFilesApi: MedicalFilesApi,
     private auth: AuthService,
-    private patientDataApi: PatientDataApi,
     private userContext: UserContextService,
     private addDoctorHelper: AddDoctorHelper
   ) {}

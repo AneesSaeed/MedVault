@@ -23,6 +23,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { DoctorSearchComponent } from './doctor-search/doctor-search.component';
 import { MyPatientsComponent } from './my-patients/my-patients.component';
 import { MyDoctorsComponent } from './my-doctors/my-doctors.component';
+import { PendingMedicalFilesComponent } from './pending-medical-files/pending-medical-files.component';
 
 @NgModule({
   declarations: [
@@ -32,7 +33,8 @@ import { MyDoctorsComponent } from './my-doctors/my-doctors.component';
     OnboardingComponent,
     DoctorSearchComponent,
     MyPatientsComponent,
-    MyDoctorsComponent
+    MyDoctorsComponent,
+    PendingMedicalFilesComponent
   ],
   imports: [
     BrowserModule,

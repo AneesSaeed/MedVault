@@ -49,6 +49,7 @@ export class OnboardingComponent {
 
       if (this.role === 'PATIENT') {
         // PATIENT : créer clé AES, chiffrer données, créer PatientSymmetricKey
+        // SÉCURITÉ: Toutes les données personnelles doivent être chiffrées avant envoi au serveur
 
         // 4. Génère une clé symétrique AES pour les données du patient
         const aesKey = await this.cryptoService.generateAESKey();
@@ -81,7 +82,7 @@ export class OnboardingComponent {
           emailEncBase64: concatEncrypted(emailEnc.iv, emailEnc.encrypted),
           dateOfBirthEncBase64: concatEncrypted(dobEnc.iv, dobEnc.encrypted),
           publicKeyPEM: publicKeyPEM,
-          symmetricKeyEncBase64: symmetricKeyEnc // NOUVEAU: clé AES chiffrée
+          symmetricKeyEncBase64: symmetricKeyEnc
         };
 
         this.userService.createPatient(payload)
