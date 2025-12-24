@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { CryptoService } from '../core/services/crypto.service';
+import { KeyStoreService } from '../core/services/key-store.service';
 import { AuthService } from '../core/services/auth.service';
 import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { PatientDataService } from '../core/services/patient-data.service';
@@ -59,7 +60,8 @@ export class MyPatientsComponent implements OnInit {
     private crypto: CryptoService,
     private auth: AuthService,
     private medicalFilesApi: MedicalFilesApi,
-    private patientDataService: PatientDataService
+    private patientDataService: PatientDataService,
+    private keyStore: KeyStoreService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -76,7 +78,7 @@ export class MyPatientsComponent implements OnInit {
       const list: RawPatient[] = (res?.patients ?? []) as RawPatient[];
 
       const decrypted: DecryptedPatient[] = [];
-      
+
       // Pour chaque patient, utilise PatientDataService pour déchiffrer
       for (const item of list) {
         try {
@@ -146,9 +148,9 @@ export class MyPatientsComponent implements OnInit {
     this.patientFiles = [];
 
     try {
-      const privatePem = this.crypto.getPrivateKey(this.auth.sub);
-      if (!privatePem) throw new Error('Clé privée du médecin introuvable');
-      const doctorPriv = await this.crypto.importPrivateKey(privatePem);
+      const doctorPriv = await this.keyStore.getRsaPrivateKey(this.auth.sub);
+      if (!doctorPriv) throw new Error('Clé privée du médecin introuvable (IndexedDB)');
+
 
       const res = await this.medicalFilesApi.listForDoctor(patientId).toPromise();
       const files = (res?.files ?? []) as ApiMedicalFile[];
@@ -193,9 +195,8 @@ export class MyPatientsComponent implements OnInit {
 
     (async () => {
       try {
-        const privatePem = this.crypto.getPrivateKey(this.auth.sub);
-        if (!privatePem) throw new Error('Clé privée du médecin introuvable');
-        const doctorPriv = await this.crypto.importPrivateKey(privatePem);
+        const doctorPriv = await this.keyStore.getRsaPrivateKey(this.auth.sub);
+        if (!doctorPriv) throw new Error('Clé privée du médecin introuvable (IndexedDB)');
 
         const fileKey = await this.crypto.decryptAESKeyWithRSA(file.wrappedFileKeyEncBase64, doctorPriv);
 

@@ -24,10 +24,10 @@ export class CryptoService {
       {
         name: 'RSA-OAEP',
         modulusLength: 2048,
-        publicExponent: new Uint8Array([1, 0, 1]), // 65537
+        publicExponent: new Uint8Array([1, 0, 1]),
         hash: 'SHA-256',
       },
-      true, // extractable
+      false,
       ['encrypt', 'decrypt']
     );
 
@@ -36,6 +36,7 @@ export class CryptoService {
       privateKey: keyPair.privateKey
     };
   }
+
 
   /**
    * Génère une clé symétrique AES-GCM (256 bits)
@@ -64,17 +65,6 @@ export class CryptoService {
   }
 
   /**
-   * Exporte une clé privée RSA au format PEM (base64)
-   * @param privateKey Clé privée CryptoKey
-   * @returns Promise avec la clé privée en format PEM
-   */
-  async exportPrivateKey(privateKey: CryptoKey): Promise<string> {
-    const exported = await window.crypto.subtle.exportKey('pkcs8', privateKey);
-    const exportedAsBase64 = this.arrayBufferToBase64(exported);
-    return `-----BEGIN PRIVATE KEY-----\n${exportedAsBase64}\n-----END PRIVATE KEY-----`;
-  }
-
-  /**
    * Importe une clé publique RSA depuis le format PEM
    * @param pem Clé publique en format PEM
    * @returns Promise avec la clé publique CryptoKey
@@ -98,33 +88,6 @@ export class CryptoService {
       },
       true,
       ['encrypt']
-    );
-  }
-
-  /**
-   * Importe une clé privée RSA depuis le format PEM
-   * @param pem Clé privée en format PEM
-   * @returns Promise avec la clé privée CryptoKey
-   */
-  async importPrivateKey(pem: string): Promise<CryptoKey> {
-    const pemHeader = '-----BEGIN PRIVATE KEY-----';
-    const pemFooter = '-----END PRIVATE KEY-----';
-    const pemContents = pem
-      .replace(pemHeader, '')
-      .replace(pemFooter, '')
-      .replace(/\s/g, '');
-
-    const binaryDer = this.base64ToArrayBuffer(pemContents);
-
-    return await window.crypto.subtle.importKey(
-      'pkcs8',
-      binaryDer,
-      {
-        name: 'RSA-OAEP',
-        hash: 'SHA-256',
-      },
-      true,
-      ['decrypt']
     );
   }
 
@@ -294,43 +257,6 @@ export class CryptoService {
     return new TextDecoder().decode(decrypted);
   }
 
-
-
-  /**
-   * Stocke une clé privée dans le localStorage (à sécuriser davantage en production)
-   * @param keyId Identifiant unique pour la clé
-   * @param privateKeyPEM Clé privée en format PEM
-   */
-  storePrivateKey(keyId: string, privateKeyPEM: string): void {
-    localStorage.setItem(`private_key_${keyId}`, privateKeyPEM);
-  }
-
-  /**
-   * Récupère une clé privée depuis le localStorage
-   * @param keyId Identifiant unique pour la clé
-   * @returns Clé privée en format PEM ou null
-   */
-  getPrivateKey(keyId: string): string | null {
-    return localStorage.getItem(`private_key_${keyId}`);
-  }
-
-  /**
-   * Stocke une clé publique dans le localStorage
-   * @param keyId Identifiant unique pour la clé
-   * @param publicKeyPEM Clé publique en format PEM
-   */
-  storePublicKey(keyId: string, publicKeyPEM: string): void {
-    localStorage.setItem(`public_key_${keyId}`, publicKeyPEM);
-  }
-
-  /**
-   * Récupère une clé publique depuis le localStorage
-   * @param keyId Identifiant unique pour la clé
-   * @returns Clé publique en format PEM ou null
-   */
-  getPublicKey(keyId: string): string | null {
-    return localStorage.getItem(`public_key_${keyId}`);
-  }
 
   // ========== Helpers ==========
 

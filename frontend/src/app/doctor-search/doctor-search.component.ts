@@ -28,23 +28,15 @@ export class DoctorSearchComponent implements OnInit {
   error: string | null = null;
   doctors: Doctor[] = [];
 
-  private helper: AddDoctorHelper;
-
   constructor(
     private patientDoctorService: PatientDoctorService,
     private cryptoService: CryptoService,
     private medicalFilesApi: MedicalFilesApi,
     private auth: AuthService,
     private patientDataApi: PatientDataApi,
-    private userContext: UserContextService
-  ) {
-    this.helper = new AddDoctorHelper(
-      this.cryptoService,
-      this.patientDoctorService,
-      this.medicalFilesApi,
-      this.patientDataApi
-    );
-  }
+    private userContext: UserContextService,
+    private addDoctorHelper: AddDoctorHelper
+  ) {}
 
   ngOnInit(): void {
     this.loadAll();
@@ -78,7 +70,7 @@ export class DoctorSearchComponent implements OnInit {
       if (!patientUserId) {
         throw new Error('Patient user ID not found');
       }
-      await this.helper.addDoctorToPatient(doctor.doctorId, patientUserId, keycloakId);
+      await this.addDoctorHelper.addDoctorToPatient(doctor.doctorId, patientUserId, keycloakId);
       this.message = `Médecin ajouté: ${doctor.firstName} ${doctor.lastName}`;
     } catch (e: any) {
       this.error = e?.message || 'Échec de l\'ajout du médecin';

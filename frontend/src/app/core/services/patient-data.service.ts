@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { CryptoService } from './crypto.service';
+import { KeyStoreService } from './key-store.service';
 import { PatientDataApi, PatientDataModel } from '../api/patient-data.api';
 import { PatientData } from '../models/patient-data.model';
 
 /**
  * Service pour gérer les données d'un patient.
- * 
+ *
  * Combine:
  * - PatientDataApi (récupère données chiffrées depuis backend)
  * - CryptoService (déchiffre avec clé privée RSA)
@@ -15,18 +16,19 @@ import { PatientData } from '../models/patient-data.model';
 export class PatientDataService {
   constructor(
     private patientDataApi: PatientDataApi,
-    private crypto: CryptoService
+    private crypto: CryptoService,
+    private keyStore: KeyStoreService
   ) {}
 
   /**
    * Récupère et déchiffre les données d'un patient.
-   * 
+   *
    * Process:
    * 1. Appel backend pour obtenir données chiffrées + clé symétrique chiffrée
    * 2. Déchiffre clé symétrique avec clé privée RSA
    * 3. Déchiffre données personnelles avec clé symétrique
    * 4. Retourne PatientData déchiffrées
-   * 
+   *
    * @param patientId ID UUID du patient
    * @param keycloakId ID Keycloak de l'utilisateur (pour récupérer clé privée RSA)
    * @returns PatientData déchiffrées
@@ -38,12 +40,11 @@ export class PatientDataService {
       throw new Error('Failed to fetch patient data from server');
     }
 
-    // 2. Récupérer clé privée RSA depuis localStorage
-    const privPem = this.crypto.getPrivateKey(keycloakId);
-    if (!privPem) {
-      throw new Error('Patient private RSA key not found in localStorage');
+    // NEW:
+    const privKey = await this.keyStore.getRsaPrivateKey(keycloakId);
+    if (!privKey) {
+      throw new Error('Patient private RSA key not found in IndexedDB (this device)');
     }
-    const privKey = await this.crypto.importPrivateKey(privPem);
 
     // 3. Déchiffrer clé symétrique avec clé privée RSA
     const symmetricKey = await this.crypto.decryptAESKeyWithRSA(
@@ -70,7 +71,7 @@ export class PatientDataService {
 
   /**
    * Déchiffre un champ de données avec une clé AES symétrique.
-   * 
+   *
    * @param encBase64 Données chiffrées (IV + ciphertext concaténés), encodées en Base64
    * @param aesKey Clé AES symétrique importée
    * @returns Plaintext déchiffré

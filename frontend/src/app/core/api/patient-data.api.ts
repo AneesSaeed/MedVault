@@ -22,11 +22,11 @@ export class PatientDataApi {
 
   /**
    * Récupère les données d'un patient avec sa clé symétrique chiffrée.
-   * 
+   *
    * Utilisé par:
    * - Un patient pour consulter ses propres données
    * - Un docteur pour consulter les données d'un patient (auquel il a accès)
-   * 
+   *
    * @param patientId ID UUID du patient
    * @returns Observable avec données chiffrées + clé symétrique chiffrée
    */

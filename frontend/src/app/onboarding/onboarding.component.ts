@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { UserService } from '../core/services/user.service';
 import { CryptoService } from '../core/services/crypto.service';
+import { KeyStoreService } from '../core/services/key-store.service';
 
 @Component({
   selector: 'app-onboarding',
@@ -20,7 +21,8 @@ export class OnboardingComponent {
     public auth: AuthService,
     private userService: UserService,
     private router: Router,
-    private cryptoService: CryptoService
+    private cryptoService: CryptoService,
+    private keyStore: KeyStoreService,
   ) {}
 
   selectRole(r: 'PATIENT' | 'DOCTOR') {
@@ -35,14 +37,15 @@ export class OnboardingComponent {
       // 1. Génère la paire de clés RSA pour l'utilisateur (TOUS LES RÔLES)
       const { publicKey, privateKey } = await this.cryptoService.generateRSAKeyPair();
 
+      const keycloakId = this.auth.sub;
+
+      // Store private/public key (CryptoKey) in IndexedDB
+      await this.keyStore.putRsaPrivateKey(keycloakId, privateKey);
+      await this.keyStore.putRsaPublicKey(keycloakId, publicKey);
+
       // 2. Exporte la clé publique en PEM pour l'envoyer au serveur
       const publicKeyPEM = await this.cryptoService.exportPublicKey(publicKey);
 
-      // 3. Exporte la clé privée en PEM et la stocke localement (jamais envoyée au serveur)
-      const privateKeyPEM = await this.cryptoService.exportPrivateKey(privateKey);
-      const keycloakId = this.auth.sub;
-      this.cryptoService.storePrivateKey(keycloakId, privateKeyPEM);
-      this.cryptoService.storePublicKey(keycloakId, publicKeyPEM);
 
       if (this.role === 'PATIENT') {
         // PATIENT : créer clé AES, chiffrer données, créer PatientSymmetricKey

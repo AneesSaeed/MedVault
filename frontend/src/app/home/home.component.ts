@@ -8,6 +8,7 @@ import { AuthService } from '../core/services/auth.service';
 import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { MedicalFile } from '../core/models/medical-file.model';
 import { CryptoService } from '../core/services/crypto.service';
+import { KeyStoreService } from '../core/services/key-store.service';
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { PatientDataService } from '../core/services/patient-data.service';
 import { PatientData } from '../core/models/patient-data.model';
@@ -32,7 +33,7 @@ export class HomeComponent implements OnInit {
   overwriteSelection: Record<string, File | null> = {};
 
   filesVm: MedicalFileVM[] = [];
-  
+
   // Patient data récupérée depuis la BD (plus depuis localStorage)
   patientData: PatientData | null = null;
   patientDataLoading = false;
@@ -46,7 +47,8 @@ export class HomeComponent implements OnInit {
     private medicalFilesApi: MedicalFilesApi,
     private patientDoctorService: PatientDoctorService,
     private crypto: CryptoService,
-    private patientDataService: PatientDataService
+    private patientDataService: PatientDataService,
+    private keyStore: KeyStoreService
   ) {}
 
   get role(): 'PATIENT' | 'DOCTOR' | string {
@@ -114,9 +116,8 @@ export class HomeComponent implements OnInit {
     this.medicalFilesApi.list().subscribe({
       next: async (res) => {
         try {
-          const privPem = this.crypto.getPrivateKey(this.keyId);
-          if (!privPem) throw new Error('Patient private key not found in localStorage');
-          const privKey = await this.crypto.importPrivateKey(privPem);
+          const privKey = await this.keyStore.getRsaPrivateKey(this.keyId);
+          if (!privKey) throw new Error('Patient private key not found in IndexedDB (this device)');
 
           const files = res.files ?? [];
           const vm: MedicalFileVM[] = [];
@@ -193,9 +194,9 @@ export class HomeComponent implements OnInit {
       const file = this.selectedNewFile;
 
       // Patient public RSA key
-      const pubPem = this.crypto.getPublicKey(this.keyId);
-      if (!pubPem) throw new Error('Patient public key not found in localStorage');
-      const pubKey = await this.crypto.importPublicKey(pubPem);
+      const pubKey = await this.keyStore.getRsaPublicKey(this.keyId);
+      if (!pubKey) throw new Error('Patient public key not found in IndexedDB (this device)');
+
 
       // 1) per-file AES key
       const fileKey = await this.crypto.generateAESKey();
@@ -303,9 +304,8 @@ export class HomeComponent implements OnInit {
 
     try {
       // Patient private key
-      const privPem = this.crypto.getPrivateKey(this.keyId);
-      if (!privPem) throw new Error('Patient private key not found in localStorage');
-      const privKey = await this.crypto.importPrivateKey(privPem);
+      const privKey = await this.keyStore.getRsaPrivateKey(this.keyId);
+      if (!privKey) throw new Error('Patient private key not found in IndexedDB (this device)');
 
       // unwrap per-file key
       const fileKey = await this.crypto.decryptAESKeyWithRSA(
@@ -370,9 +370,8 @@ export class HomeComponent implements OnInit {
 
     (async () => {
       try {
-        const privPem = this.crypto.getPrivateKey(this.keyId);
-        if (!privPem) throw new Error('Patient private key not found in localStorage');
-        const privKey = await this.crypto.importPrivateKey(privPem);
+        const privKey = await this.keyStore.getRsaPrivateKey(this.keyId);
+        if (!privKey) throw new Error('Patient private key not found in IndexedDB (this device)');
 
         // unwrap per-file key
         const fileKey = await this.crypto.decryptAESKeyWithRSA(
