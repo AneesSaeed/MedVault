@@ -13,6 +13,7 @@ import be.he2b.healthsec.medical_records.model.PatientSymmetricKeyId;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.model.UserType;
 import be.he2b.healthsec.medical_records.dto.PatientDataDTO;
+import be.he2b.healthsec.medical_records.logging.LoggingService;
 import be.he2b.healthsec.medical_records.repository.DoctorRepository;
 import be.he2b.healthsec.medical_records.repository.PatientRepository;
 import be.he2b.healthsec.medical_records.repository.PatientSymmetricKeyRepository;
@@ -27,13 +28,24 @@ public class UserService {
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
     private final PatientSymmetricKeyRepository patientSymmetricKeyRepository;
+    private final LoggingService logger;
 
     public boolean existsByKeycloakId(String keycloakId) {
-        return userRepository.existsByKeycloakId(keycloakId);
+        boolean exists = userRepository.existsByKeycloakId(keycloakId);
+        logger.debug("User existence check", java.util.Map.of(
+            "keycloakId", keycloakId,
+            "exists", exists
+        ));
+        return exists;
     }
 
     public Optional<User> findByKeycloakId(String keycloakId) {
-        return userRepository.findByKeycloakId(keycloakId);
+        Optional<User> user = userRepository.findByKeycloakId(keycloakId);
+        logger.debug("User lookup", java.util.Map.of(
+            "keycloakId", keycloakId,
+            "found", user.isPresent()
+        ));
+        return user;
     }
 
     @Transactional
@@ -45,9 +57,16 @@ public class UserService {
                                 String publicKeyPEM,
                                 String symmetricKeyEncBase64) {
         
+        logger.debug("Creating patient", java.util.Map.of(
+            "keycloakId", keycloakId
+        ));
+        
         // Prevent duplicates
         Optional<User> existing = userRepository.findByKeycloakId(keycloakId);
         if (existing.isPresent()) {
+            logger.warn("Attempted to create duplicate patient", java.util.Map.of(
+                "keycloakId", keycloakId
+            ));
             throw new IllegalArgumentException("User already exists");
         }
 
@@ -61,6 +80,9 @@ public class UserService {
             .build();
         
         User savedUser = userRepository.save(user);
+        logger.debug("User entity saved", java.util.Map.of(
+            "userId", savedUser.getId()
+        ));
         
         // Décodage des données chiffrées
         byte[] firstNameEnc = Base64.getDecoder().decode(firstNameEncBase64);
@@ -77,6 +99,9 @@ public class UserService {
             .build();
         
         Patient savedPatient = patientRepository.save(patient);
+        logger.debug("Patient entity saved", java.util.Map.of(
+            "patientId", savedPatient.getId()
+        ));
 
         // NOUVEAU: Créer une entrée PatientSymmetricKey pour le patient lui-même
         // Cela permet au patient de récupérer sa clé symétrique chiffrée depuis la DB
@@ -91,6 +116,10 @@ public class UserService {
             .build();
         
         patientSymmetricKeyRepository.save(patientOwnKey);
+        logger.info("Patient created successfully", java.util.Map.of(
+            "userId", savedUser.getId(),
+            "keycloakId", keycloakId
+        ));
         
         return "Patient created with ID: " + savedUser.getId();
     }
@@ -102,9 +131,16 @@ public class UserService {
                                String medicalOrganization, 
                                String publicKeyPEM) {
         
+        logger.debug("Creating doctor", java.util.Map.of(
+            "keycloakId", keycloakId
+        ));
+        
         // Prevent duplicates
         Optional<User> existing = userRepository.findByKeycloakId(keycloakId);
         if (existing.isPresent()) {
+            logger.warn("Attempted to create duplicate doctor", java.util.Map.of(
+                "keycloakId", keycloakId
+            ));
             throw new IllegalArgumentException("User already exists");
         }
 
@@ -117,6 +153,9 @@ public class UserService {
                 .build();
         
         User savedUser = userRepository.save(user);
+        logger.debug("User entity saved", java.util.Map.of(
+            "userId", savedUser.getId()
+        ));
     
         // Les données personnelles du médecin sont stockées EN CLAIR dans Doctor
         Doctor doctor = Doctor.builder()
@@ -128,6 +167,11 @@ public class UserService {
                 .build();
     
         doctorRepository.save(doctor);
+        logger.info("Doctor created successfully", java.util.Map.of(
+            "userId", savedUser.getId(),
+            "keycloakId", keycloakId,
+            "org", medicalOrganization
+        ));
     
         return "Doctor created with ID: " + savedUser.getId();
     }
@@ -145,9 +189,17 @@ public class UserService {
      * @throws IllegalArgumentException si le patient n'existe pas ou si l'utilisateur n'a pas accès
      */
     public PatientDataDTO getPatientData(java.util.UUID patientId, java.util.UUID requestingUserId) {
+        logger.debug("Getting patient data", java.util.Map.of(
+            "patientId", patientId,
+            "requestingUserId", requestingUserId
+        ));
+        
         // 1. Récupérer le patient
         Optional<Patient> patientOpt = patientRepository.findById(patientId);
         if (patientOpt.isEmpty()) {
+            logger.warn("Patient not found", java.util.Map.of(
+                "patientId", patientId
+            ));
             throw new IllegalArgumentException("Patient not found");
         }
         Patient patient = patientOpt.get();
@@ -159,9 +211,18 @@ public class UserService {
             .findByPatientAndRecipient(patientId, requestingUserId);
         
         if (symmetricKey == null) {
+            logger.warn("User does not have access to patient data", java.util.Map.of(
+                "requestingUserId", requestingUserId,
+                "patientId", patientId
+            ));
             throw new IllegalArgumentException("User does not have access to this patient's data");
         }
 
+        logger.info("Patient data accessed", java.util.Map.of(
+            "patientId", patientId,
+            "requestingUserId", requestingUserId
+        ));
+        
         // 3. Construire et retourner le DTO
         return PatientDataDTO.builder()
             .patientId(patientId.toString())

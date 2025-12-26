@@ -48,6 +48,16 @@ e2e/*.map
 
 # Package Files #
 *.jar
+
+### ELK Stack ###
+# Elasticsearch data
+elasticsearch_data/
+logs/
+spring.log*
+
+# Logstash temporary files
+.logstash_plugins/
+
 *.war
 *.nar
 *.ear

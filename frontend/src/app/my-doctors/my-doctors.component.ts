@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
+import { LoggingService } from '../core/services/logging.service';
 
 type Doctor = {
   doctorId: string;
@@ -22,7 +23,10 @@ export class MyDoctorsComponent implements OnInit {
 
   doctors: Doctor[] = [];
 
-  constructor(private service: PatientDoctorService) {}
+  constructor(
+    private service: PatientDoctorService,
+    private logger: LoggingService
+  ) {}
 
   async ngOnInit() {
     await this.loadMyDoctors();
@@ -31,6 +35,7 @@ export class MyDoctorsComponent implements OnInit {
   private async loadMyDoctors() {
     this.loading = true;
     this.error = null;
+    this.logger.debug('Loading my doctors list');
     try {
       // 1. Récupérer les IDs des médecins du patient
       const myDoctorsRes = await this.service.getMyDoctors().toPromise();
@@ -38,6 +43,7 @@ export class MyDoctorsComponent implements OnInit {
 
       if (doctorIds.length === 0) {
         this.doctors = [];
+        this.logger.info('No doctors found for patient');
         return;
       }
 
@@ -47,9 +53,10 @@ export class MyDoctorsComponent implements OnInit {
 
       // 3. Filtrer pour ne garder que mes médecins
       this.doctors = allDoctors.filter(d => doctorIds.includes(d.doctorId));
+      this.logger.logAction('MY_DOCTORS_LOADED', '', { doctorsCount: this.doctors.length });
     } catch (e: any) {
-      console.error(e);
       this.error = 'Impossible de charger la liste de vos médecins';
+      this.logger.error('Failed to load my doctors: {}', e.message || e);
     } finally {
       this.loading = false;
     }
@@ -63,15 +70,20 @@ export class MyDoctorsComponent implements OnInit {
     this.removingId = doctor.doctorId;
     this.message = null;
     this.error = null;
+    this.logger.debug('Removing doctor', { doctorId: doctor.doctorId }, 'MyDoctorsComponent');
 
     try {
       await this.service.removeDoctorFromPatient(doctor.doctorId).toPromise();
       this.message = `Médecin retiré : ${doctor.firstName} ${doctor.lastName}`;
+      this.logger.logAction('DOCTOR_REMOVED', '', {
+        doctorId: doctor.doctorId,
+        doctorName: `${doctor.firstName} ${doctor.lastName}`
+      });
       // Recharger la liste
       await this.loadMyDoctors();
     } catch (e: any) {
-      console.error(e);
       this.error = e?.error?.error || 'Échec de la suppression du médecin';
+      this.logger.error('Failed to remove doctor {}: {}', doctor.doctorId, e?.error?.error || e.message);
     } finally {
       this.removingId = null;
     }

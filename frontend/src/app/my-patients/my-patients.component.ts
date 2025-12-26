@@ -6,6 +6,7 @@ import { AuthService } from '../core/services/auth.service';
 import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { PatientDataService } from '../core/services/patient-data.service';
 import { FileUploadHelper } from '../core/services/file-upload.helper';
+import { LoggingService } from '../core/services/logging.service';
 
 type RawPatient = {
   patientId: string;
@@ -69,7 +70,8 @@ export class MyPatientsComponent implements OnInit {
     private medicalFilesApi: MedicalFilesApi,
     private patientDataService: PatientDataService,
     private keyStore: KeyStoreService,
-    private fileUploadHelper: FileUploadHelper
+    private fileUploadHelper: FileUploadHelper,
+    private logger: LoggingService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -79,6 +81,7 @@ export class MyPatientsComponent implements OnInit {
   private async loadAndDecryptPatients(): Promise<void> {
     this.loading = true;
     this.error = null;
+    this.logger.debug('Loading and decrypting my patients list');
 
     try {
       // Récupère la liste des IDs patients
@@ -103,7 +106,7 @@ export class MyPatientsComponent implements OnInit {
             dob: patientData.dateOfBirth
           });
         } catch (e: any) {
-          console.error(`Failed to decrypt patient ${item.patientId}:`, e);
+          this.logger.error('Failed to decrypt patient {}: {}', item.patientId, e.message || e);
           // On ajoute quand même avec données partielles
           decrypted.push({
             patientId: item.patientId,
@@ -115,9 +118,10 @@ export class MyPatientsComponent implements OnInit {
       }
 
       this.patients = decrypted;
+      this.logger.logAction('MY_PATIENTS_LOADED', '', { patientsCount: this.patients.length });
     } catch (e: any) {
-      console.error(e);
       this.error = e?.message || 'Impossible de charger les patients';
+      this.logger.error('Failed to load my patients: {}', e.message || e);
     } finally {
       this.loading = false;
     }
@@ -142,8 +146,8 @@ export class MyPatientsComponent implements OnInit {
         this.auth.sub
       );
       p.dob = patientData.dateOfBirth;
-    } catch (e) {
-      console.error('Failed to load patient details:', e);
+    } catch (e: any) {
+      this.logger.error('Failed to load patient details: {}', e?.message || e);
     } finally {
       this.detailsLoading[p.patientId] = false;
     }
@@ -154,6 +158,7 @@ export class MyPatientsComponent implements OnInit {
     this.filesLoading = true;
     this.filesError = null;
     this.patientFiles = [];
+    this.logger.debug('Loading files for patient', { patientId }, 'MyPatientsComponent');
 
     try {
       const doctorPriv = await this.keyStore.getRsaPrivateKey(this.auth.sub);
@@ -187,9 +192,13 @@ export class MyPatientsComponent implements OnInit {
       }
 
       this.patientFiles = vm;
+      this.logger.logAction('PATIENT_FILES_LOADED', '', {
+        patientId,
+        filesCount: this.patientFiles.length
+      });
     } catch (e: any) {
-      console.error(e);
       this.filesError = e?.message || 'Impossible de charger les fichiers';
+      this.logger.error('Failed to load files for patient {}: {}', patientId, e.message || e);
     } finally {
       this.filesLoading = false;
     }
@@ -228,17 +237,20 @@ export class MyPatientsComponent implements OnInit {
               URL.revokeObjectURL(url);
             } catch (e: any) {
               this.filesError = e?.message || 'Échec du déchiffrement du fichier';
+              this.logger.error('Failed to decrypt downloaded file {}: {}', file.id, e?.message || e);
             } finally {
               this.filesLoading = false;
             }
           },
           error: (err) => {
             this.filesError = err?.error?.error || err?.message || 'Téléchargement impossible';
+            this.logger.error('File download failed for {}: {}', file.id, err?.error?.error || err?.message || err);
             this.filesLoading = false;
           }
         });
       } catch (e: any) {
         this.filesError = e?.message || 'Téléchargement impossible';
+        this.logger.error('File download prepare failed: {}', e?.message || e);
         this.filesLoading = false;
       }
     })();
@@ -294,7 +306,7 @@ export class MyPatientsComponent implements OnInit {
       if (input) input.value = '';
     } catch (e: any) {
       this.uploadError = e?.message || 'Erreur lors de l\'upload';
-      console.error('Upload error:', e);
+      this.logger.error('Upload error: {}', e?.message || e);
     } finally {
       this.uploadLoading = false;
     }
