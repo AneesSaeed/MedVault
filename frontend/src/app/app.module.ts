@@ -19,38 +19,33 @@ import { HeaderComponent } from './header/header.component';
 import { HomeComponent } from './home/home.component';
 import { AppRoutingModule } from './app-routing.module';
 import { OnboardingComponent } from './onboarding/onboarding.component';
-import { HttpClientModule } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { DoctorSearchComponent } from './doctor-search/doctor-search.component';
 import { MyPatientsComponent } from './my-patients/my-patients.component';
 import { MyDoctorsComponent } from './my-doctors/my-doctors.component';
 import { PendingMedicalFilesComponent } from './pending-medical-files/pending-medical-files.component';
 
-@NgModule({
-  declarations: [
-    AppComponent, // Main application UI component
-    HeaderComponent,
-    HomeComponent,
-    OnboardingComponent,
-    DoctorSearchComponent,
-    MyPatientsComponent,
-    MyDoctorsComponent,
-    PendingMedicalFilesComponent
-  ],
-  imports: [
-    BrowserModule,
-    HttpClientModule,
-    KeycloakAngularModule,  // Enables Keycloak features in Angular
-    AppRoutingModule,
-    FormsModule
-  ],
-  providers: [
-    {
-      provide: APP_INITIALIZER,
-      useFactory: initializeKeycloak, // Run our Keycloak init BEFORE Angular loads
-      deps: [KeycloakService],
-      multi: true
-    }
-  ],
-  bootstrap: [AppComponent] // Application starts from this component
-})
+@NgModule({ declarations: [
+        AppComponent, // Main application UI component
+        HeaderComponent,
+        HomeComponent,
+        OnboardingComponent,
+        DoctorSearchComponent,
+        MyPatientsComponent,
+        MyDoctorsComponent,
+        PendingMedicalFilesComponent
+    ],
+    bootstrap: [AppComponent] // Application starts from this component
+    , imports: [BrowserModule,
+        KeycloakAngularModule, // Enables Keycloak features in Angular
+        AppRoutingModule,
+        FormsModule], providers: [
+        {
+            provide: APP_INITIALIZER,
+            useFactory: initializeKeycloak, // Run our Keycloak init BEFORE Angular loads
+            deps: [KeycloakService],
+            multi: true
+        },
+        provideHttpClient(withInterceptorsFromDi())
+    ] })
 export class AppModule { }

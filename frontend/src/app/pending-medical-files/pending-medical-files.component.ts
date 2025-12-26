@@ -5,9 +5,10 @@ import { PendingFileHelper, DecryptedPendingFile } from '../core/services/pendin
 import { sanitizeFilename } from '../core/utils/sanitize.util';
 
 @Component({
-  selector: 'app-pending-medical-files',
-  templateUrl: './pending-medical-files.component.html',
-  styleUrls: ['./pending-medical-files.component.scss']
+    selector: 'app-pending-medical-files',
+    templateUrl: './pending-medical-files.component.html',
+    styleUrls: ['./pending-medical-files.component.scss'],
+    standalone: false
 })
 export class PendingMedicalFilesComponent implements OnInit {
   loading = false;

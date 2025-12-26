@@ -37,9 +37,10 @@ type MedicalFileVM = ApiMedicalFile & {
 };
 
 @Component({
-  selector: 'app-my-patients',
-  templateUrl: './my-patients.component.html',
-  styleUrls: ['./my-patients.component.scss'],
+    selector: 'app-my-patients',
+    templateUrl: './my-patients.component.html',
+    styleUrls: ['./my-patients.component.scss'],
+    standalone: false
 })
 export class MyPatientsComponent implements OnInit {
   loading = false;
