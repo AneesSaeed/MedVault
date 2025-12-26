@@ -6,9 +6,10 @@ import { CryptoService } from '../core/services/crypto.service';
 import { KeyStoreService } from '../core/services/key-store.service';
 
 @Component({
-  selector: 'app-onboarding',
-  templateUrl: './onboarding.component.html',
-  styleUrls: ['./onboarding.component.scss']
+    selector: 'app-onboarding',
+    templateUrl: './onboarding.component.html',
+    styleUrls: ['./onboarding.component.scss'],
+    standalone: false
 })
 export class OnboardingComponent {
 

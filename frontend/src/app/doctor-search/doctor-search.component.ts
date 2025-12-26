@@ -13,9 +13,10 @@ type Doctor = {
 };
 
 @Component({
-  selector: 'app-doctor-search',
-  templateUrl: './doctor-search.component.html',
-  styleUrls: ['./doctor-search.component.scss']
+    selector: 'app-doctor-search',
+    templateUrl: './doctor-search.component.html',
+    styleUrls: ['./doctor-search.component.scss'],
+    standalone: false
 })
 export class DoctorSearchComponent implements OnInit {
   searchTerm = '';

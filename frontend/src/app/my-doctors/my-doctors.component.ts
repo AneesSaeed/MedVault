@@ -10,9 +10,10 @@ type Doctor = {
 };
 
 @Component({
-  selector: 'app-my-doctors',
-  templateUrl: './my-doctors.component.html',
-  styleUrls: ['./my-doctors.component.scss']
+    selector: 'app-my-doctors',
+    templateUrl: './my-doctors.component.html',
+    styleUrls: ['./my-doctors.component.scss'],
+    standalone: false
 })
 export class MyDoctorsComponent implements OnInit {
   loading = false;
