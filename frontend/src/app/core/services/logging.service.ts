@@ -32,7 +32,9 @@ export interface LogEntry {
   providedIn: 'root'
 })
 export class LoggingService {
-  private readonly logstashUrl = 'http://localhost:5002'; // Logstash HTTP input
+  // Send logs via nginx proxy to Logstash over TLS (accessed from browser)
+  // Browser uses https://localhost/logs which gets proxied to logstash:5002 by nginx
+  private readonly logstashUrl = 'https://localhost/logs';
   private readonly logLevel = environment.production ? LogLevel.INFO : LogLevel.DEBUG;
   private readonly http = inject(HttpClient);
 

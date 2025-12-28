@@ -191,24 +191,31 @@ services:
 
   logstash:
     image: docker.elastic.co/logstash/logstash:8.11.0
+    group_add:
+      - 0  # Add group 0 (root) to read private keys with 640 permissions (same as keycloak)
     volumes:
       - ./logstash/pipeline:/usr/share/logstash/pipeline
       - ./logstash/patterns:/usr/share/logstash/patterns
+      # Mount internal CA certs for HTTPS
+      - internal_certs:/certs/internal:ro
     ports:
       - "5000:5000"     # TCP input from backend
       - "5001:5001/udp" # UDP input
-      - "5002:5002"     # HTTP input from frontend
+      - "5002:5002"     # HTTPS input from frontend
     environment:
       - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
     depends_on:
       elasticsearch:
+        condition: service_healthy
+      internal_certs:
         condition: service_healthy
     healthcheck:
       # Wait for API (9600) AND TCP input (5000) so backend connects only when ready
       test: ["CMD-SHELL", "curl -sf http://localhost:9600 && timeout 1 bash -c '</dev/tcp/localhost/5000'"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s  # Donne 30s à Logstash pour initialiser son pipeline avant les tests
     restart: always
 
   kibana:
