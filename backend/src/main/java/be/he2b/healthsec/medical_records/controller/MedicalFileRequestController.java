@@ -3,8 +3,8 @@ package be.he2b.healthsec.medical_records.controller;
 import be.he2b.healthsec.medical_records.dto.CreatePendingMedicalFileDTO;
 import be.he2b.healthsec.medical_records.dto.PendingMedicalFileInfoDTO;
 import be.he2b.healthsec.medical_records.model.User;
-import be.he2b.healthsec.medical_records.model.UserType;
 import be.he2b.healthsec.medical_records.repository.UserRepository;
+import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.MedicalFileRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,13 +31,10 @@ public class MedicalFileRequestController {
                                                 @PathVariable("patientId") UUID patientId,
                                                 @RequestBody CreatePendingMedicalFileDTO dto) {
         String keycloakId = jwt.getSubject();
-        // Vérifier que l'appelant est un docteur
-        User caller = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        if (caller.getRole() != UserType.DOCTOR) {
-            return ResponseEntity.status(403).body("Only doctors can create file requests");
-        }
 
+        if (!JwtRoles.hasRealmRole(jwt, "DOCTOR")) {
+            throw new IllegalArgumentException("Only doctors can create file requests");
+        }
         String id = service.createRequest(patientId, keycloakId, dto);
         return ResponseEntity.ok(id);
     }
@@ -50,7 +47,8 @@ public class MedicalFileRequestController {
         String keycloakId = jwt.getSubject();
         User user = userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        if (user.getRole() != UserType.PATIENT) {
+
+        if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
             return ResponseEntity.status(403).build();
         }
         List<PendingMedicalFileInfoDTO> items = service.listForPatient(user.getId());
@@ -66,7 +64,8 @@ public class MedicalFileRequestController {
         String keycloakId = jwt.getSubject();
         User user = userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        if (user.getRole() != UserType.PATIENT) {
+        
+        if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
             return ResponseEntity.status(403).build();
         }
         service.deleteRequest(requestId, user.getId());

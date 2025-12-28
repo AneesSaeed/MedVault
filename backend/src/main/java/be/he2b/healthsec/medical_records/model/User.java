@@ -33,17 +33,6 @@ public class User {
     @Column(name = "keycloak_id", unique = true, nullable = false)
     private String keycloakId; // id fourni par Keycloak
 
-    /**
-     * ARCHITECTURE SIMPLIFIÉE:
-     * - User contient UNIQUEMENT les champs communs (id, keycloakId, role, publicKey)
-     * - Les données personnelles sont dans Patient (chiffrées) ou Doctor (en clair)
-     * - Pas de firstName/lastName/email ici pour éviter la confusion
-     */
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "user_type_role", nullable = false)
-    private UserType role; // DOCTOR ou PATIENT
-
     @Column(name = "public_key", columnDefinition = "TEXT")
     private String publicKey; // clé publique PEM/base64 (peut être très longue, ~450+ caractères)
 

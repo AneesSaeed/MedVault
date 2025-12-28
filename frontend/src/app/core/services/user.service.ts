@@ -14,7 +14,7 @@ export class UserService {
   }
 
   getMe() {
-    return this.http.get<MeResponse>(`${this.api}/user/me`);
+    return this.http.get<{ userId: string }>(`${this.api}/user/me`);
   }
 
   createPatient(payload: CreatePatientDTO) {
@@ -26,13 +26,7 @@ export class UserService {
   }
 }
 
-export interface MeResponse {
-  keycloakId: string;
-  userId?: string;
-  role: 'PATIENT' | 'DOCTOR';
-  firstName?: string;
-  lastName?: string;
-}
+
 
 export interface CreatePatientDTO {
   // SÉCURITÉ: TOUS les champs doivent être chiffrés pour protéger la vie privée du patient

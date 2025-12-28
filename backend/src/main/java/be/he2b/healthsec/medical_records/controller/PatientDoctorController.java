@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.hibernate.usertype.UserType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import be.he2b.healthsec.medical_records.dto.AddDoctorToPatientDTO;
 import be.he2b.healthsec.medical_records.dto.DoctorInfoDTO;
 import be.he2b.healthsec.medical_records.model.User;
-import be.he2b.healthsec.medical_records.model.UserType;
+import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.PatientDoctorService;
 import be.he2b.healthsec.medical_records.model.PatientDoctorId;
 import be.he2b.healthsec.medical_records.service.UserService;
@@ -57,20 +58,21 @@ public class PatientDoctorController {
      */
     @GetMapping("/patient/{patientId}/public-key")
     public ResponseEntity<?> getPatientPublicKey(@AuthenticationPrincipal Jwt jwt,
-                                                 @PathVariable String patientId) {
+                                                @PathVariable String patientId) {
         try {
             UUID requestedPatientId = UUID.fromString(patientId);
+
             String keycloakId = jwt.getSubject();
             User caller = userService.findByKeycloakId(keycloakId)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-            if (caller.getRole() == UserType.PATIENT) {
-                // Patient ne peut demander que sa propre clé publique
+            if (JwtRoles.hasRealmRole(jwt, "PATIENT")) {
+                // patient can only request their own key
                 if (!caller.getId().equals(requestedPatientId)) {
                     return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
                 }
-            } else if (caller.getRole() == UserType.DOCTOR) {
-                // Docteur doit avoir une relation avec ce patient
+            } else if (JwtRoles.hasRealmRole(jwt, "DOCTOR")) {
+                // doctor must be linked to patient
                 PatientDoctorId relId = new PatientDoctorId(requestedPatientId, caller.getId());
                 if (!patientDoctorRepository.existsById(relId)) {
                     return ResponseEntity.status(403).body(Map.of("error", "Doctor not linked to patient"));
@@ -85,6 +87,7 @@ public class PatientDoctorController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
 
     @GetMapping("/my-doctors/keys")
     public ResponseEntity<?> myDoctorsWithKeys(@AuthenticationPrincipal Jwt jwt) {
@@ -121,19 +124,16 @@ public class PatientDoctorController {
      * Selon l'énoncé : "A patient can add or remove a doctor to his list of appointed doctors."
      */
     @PostMapping("/add")
-    public ResponseEntity<?> addDoctorToPatient(
-            @AuthenticationPrincipal Jwt jwt,
-            @RequestBody AddDoctorToPatientDTO dto) {
+    public ResponseEntity<?> addDoctorToPatient(@AuthenticationPrincipal Jwt jwt,
+                                                @RequestBody AddDoctorToPatientDTO dto) {
         try {
-            // Récupère l'ID du patient depuis le JWT
+            if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only patients can add doctors"));
+            }
+
             String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            
-            if (user.getRole() != be.he2b.healthsec.medical_records.model.UserType.PATIENT) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Only patients can add doctors"));
-            }
 
             UUID patientId = user.getId();
             UUID doctorId = UUID.fromString(dto.getDoctorId());
@@ -146,10 +146,10 @@ public class PatientDoctorController {
 
             return ResponseEntity.ok(Map.of("message", msg));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
 
     /**
      * Récupère la liste des médecins associés au patient actuel.
@@ -157,20 +157,18 @@ public class PatientDoctorController {
     @GetMapping("/my-doctors")
     public ResponseEntity<?> getMyDoctors(@AuthenticationPrincipal Jwt jwt) {
         try {
+            if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only patients can view their doctors"));
+            }
+
             String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            
-            if (user.getRole() != be.he2b.healthsec.medical_records.model.UserType.PATIENT) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Only patients can view their doctors"));
-            }
 
             List<UUID> doctorIds = patientDoctorService.getPatientDoctors(user.getId());
             return ResponseEntity.ok(Map.of("doctorIds", doctorIds));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -181,22 +179,21 @@ public class PatientDoctorController {
     @GetMapping("/my-patients")
     public ResponseEntity<?> getMyPatients(@AuthenticationPrincipal Jwt jwt) {
         try {
+            if (!JwtRoles.hasRealmRole(jwt, "DOCTOR")) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only doctors can view their patients"));
+            }
+
             String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            
-            if (user.getRole() != be.he2b.healthsec.medical_records.model.UserType.DOCTOR) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Only doctors can view their patients"));
-            }
 
             var patients = patientDoctorService.getDoctorPatients(user.getId());
             return ResponseEntity.ok(Map.of("patients", patients));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
 
     /**
      * Récupère les données chiffrées d'un patient spécifique.
@@ -204,47 +201,42 @@ public class PatientDoctorController {
      * Le médecin doit avoir accès au patient via une relation PatientDoctor.
      */
     @GetMapping("/patient/{patientId}/data")
-    public ResponseEntity<?> getPatientData(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable String patientId) {
+    public ResponseEntity<?> getPatientData(@AuthenticationPrincipal Jwt jwt,
+                                        @PathVariable String patientId) {
         try {
+            if (!JwtRoles.hasRealmRole(jwt, "DOCTOR")) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only doctors can view patient data"));
+            }
+
             String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            
-            if (user.getRole() != be.he2b.healthsec.medical_records.model.UserType.DOCTOR) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Only doctors can view patient data"));
-            }
 
             UUID doctorId = user.getId();
             UUID patientUuid = UUID.fromString(patientId);
 
-            // Use UserService.getPatientData() which validates access via PatientSymmetricKey
             var patientData = userService.getPatientData(patientUuid, doctorId);
             return ResponseEntity.ok(patientData);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
 
     /**
      * Supprime un médecin de la liste des médecins d'un patient.
      */
     @DeleteMapping("/remove/{doctorId}")
-    public ResponseEntity<?> removeDoctorFromPatient(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable String doctorId) {
+    public ResponseEntity<?> removeDoctorFromPatient(@AuthenticationPrincipal Jwt jwt,
+                                                    @PathVariable String doctorId) {
         try {
+            if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only patients can remove doctors"));
+            }
+
             String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            
-            if (user.getRole() != be.he2b.healthsec.medical_records.model.UserType.PATIENT) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Only patients can remove doctors"));
-            }
 
             UUID patientId = user.getId();
             UUID doctorUuid = UUID.fromString(doctorId);
@@ -252,20 +244,18 @@ public class PatientDoctorController {
             patientDoctorService.removeDoctorFromPatient(patientId, doctorUuid);
             return ResponseEntity.ok(Map.of("message", "Doctor removed successfully"));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     // Helpers
     private UUID currentPatientIdOrThrow(Jwt jwt) {
+        if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
+            throw new IllegalArgumentException("Only patients can perform this action");
+        }
         String keycloakId = jwt.getSubject();
         User user = userService.findByKeycloakId(keycloakId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        if (user.getRole() != UserType.PATIENT) {
-            throw new IllegalArgumentException("Only patients can manage medical files");
-        }
         return user.getId();
     }
 }

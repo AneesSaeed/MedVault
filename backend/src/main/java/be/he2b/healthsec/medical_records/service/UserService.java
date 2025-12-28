@@ -11,7 +11,6 @@ import be.he2b.healthsec.medical_records.model.Patient;
 import be.he2b.healthsec.medical_records.model.PatientSymmetricKey;
 import be.he2b.healthsec.medical_records.model.PatientSymmetricKeyId;
 import be.he2b.healthsec.medical_records.model.User;
-import be.he2b.healthsec.medical_records.model.UserType;
 import be.he2b.healthsec.medical_records.dto.PatientDataDTO;
 import be.he2b.healthsec.medical_records.repository.DoctorRepository;
 import be.he2b.healthsec.medical_records.repository.PatientRepository;
@@ -55,7 +54,6 @@ public class UserService {
         // Les données personnelles du patient sont stockées chiffrées dans Patient
         User user = User.builder()
             .keycloakId(keycloakId)
-            .role(UserType.PATIENT)
             .publicKey(publicKeyPEM)
             .createdAt(Instant.now())
             .build();
@@ -111,7 +109,6 @@ public class UserService {
         // Pour les médecins, User contient seulement les champs communs
         User user = User.builder()
                 .keycloakId(keycloakId)
-                .role(UserType.DOCTOR)
                 .publicKey(publicKeyPEM)
                 .createdAt(Instant.now())
                 .build();

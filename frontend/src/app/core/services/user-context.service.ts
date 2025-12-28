@@ -2,24 +2,27 @@ import { Injectable } from '@angular/core';
 import { tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 import { UserService } from './user.service';
+import { AuthService, AppRole } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class UserContextService {
-  role: string | null = null;
+  // Source of truth = token
+  get role(): AppRole | null {
+    return this.auth.userRole;
+  }
+
+  // DB UUID (needed for backend relations)
   userId: string | null = null;
 
-  constructor(private userService: UserService) {}
+  constructor(
+    private userService: UserService,
+    private auth: AuthService
+  ) {}
 
-  loadUserContext$(): Observable<any> {
+  loadUserContext$(): Observable<{ userId: string }> {
     return this.userService.getMe().pipe(
       tap((data) => {
-        if (data) {
-          this.role = data.role;
-          this.userId = data.userId || data.keycloakId;
-        } else {
-          this.role = null;
-          this.userId = null;
-        }
+        this.userId = data?.userId ?? null;
       })
     );
   }

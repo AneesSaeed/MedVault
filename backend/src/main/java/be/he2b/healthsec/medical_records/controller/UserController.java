@@ -18,6 +18,7 @@ import be.he2b.healthsec.medical_records.dto.CreateDoctorDTO;
 import be.he2b.healthsec.medical_records.dto.CreatePatientDTO;
 import be.he2b.healthsec.medical_records.dto.PatientDataDTO;
 import be.he2b.healthsec.medical_records.model.User;
+import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.UserService;
 import be.he2b.healthsec.medical_records.service.keycloak.KeycloakAdminService;
 
@@ -47,23 +48,16 @@ public class UserController {
     // --------------------------------------------------------------
     @GetMapping("/user/me")
     public ResponseEntity<?> userMe(@AuthenticationPrincipal Jwt jwt) {
-
         String keycloakId = jwt.getSubject();
 
-        Optional<User> userOpt = userService.findByKeycloakId(keycloakId);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.ok(null);
-        }
+        var userOpt = userService.findByKeycloakId(keycloakId);
+        if (userOpt.isEmpty()) return ResponseEntity.notFound().build();
 
-        User user = userOpt.get();
-
-        return ResponseEntity.ok(
-            Map.of(
-                "userId", user.getId(),
-                "role", user.getRole().name()
-            )
-        );
+        return ResponseEntity.ok(Map.of(
+            "userId", userOpt.get().getId().toString()
+        ));
     }
+
 
     // --------------------------------------------------------------
     //  Create Patient (first-time onboarding)

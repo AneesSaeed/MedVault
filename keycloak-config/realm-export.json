@@ -572,7 +572,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "SpMxMPs6ZgW0REPtOmPQWswv3JYS9u5z",
       "redirectUris": [
         "/*"
       ],
