@@ -3,7 +3,6 @@
 <div class="modal">
   <h2 class="title">Complete Your Registration</h2>
 
-  <!-- Prefilled identity -->
   <div class="identity-grid">
     <div class="field">
       <label>First name</label>
@@ -26,28 +25,15 @@
     </div>
   </div>
 
-  <!-- Always visible role selection -->
-  <div class="role-select">
-    <p class="subtitle">Select your role</p>
-
-    <div class="role-buttons">
-      <button
-        class="btn patient"
-        [class.selected]="role === 'PATIENT'"
-        (click)="selectRole('PATIENT')">
-        Patient
-      </button>
-
-      <button
-        class="btn doctor"
-        [class.selected]="role === 'DOCTOR'"
-        (click)="selectRole('DOCTOR')">
-        Doctor
-      </button>
-    </div>
+  <div *ngIf="!role" class="extra-form">
+    <p class="subtitle">
+      Role not found in your token. Please log out and log in again.
+    </p>
+    <button class="submit-btn" (click)="auth.logout()">
+      Log out
+    </button>
   </div>
 
-  <!-- Patient or Doctor form displayed below -->
   <div *ngIf="role" class="extra-form">
     <ng-container *ngIf="role === 'PATIENT'">
       <label>Date of birth</label>
@@ -56,13 +42,16 @@
 
     <ng-container *ngIf="role === 'DOCTOR'">
       <label>Medical organisation</label>
-      <input type="text" [(ngModel)]="medicalOrg" placeholder="Hospital, Clinic...">
+      <input
+        type="text"
+        [(ngModel)]="medicalOrg"
+        placeholder="Hospital, Clinic...">
     </ng-container>
 
     <button
-    class="submit-btn"
-    (click)="submit()"
-    [disabled]="!isFormValid()">
+      class="submit-btn"
+      (click)="submit()"
+      [disabled]="!isFormValid() || isSubmitting">
       Finish
     </button>
   </div>

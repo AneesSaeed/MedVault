@@ -108,7 +108,13 @@ services:
 
       KEYCLOAK_ISSUER_URI: https://localhost/auth/realms/health-realm # Issuer must match tokens coming from the browser-facing UR
       KEYCLOAK_JWKS_URI: https://keycloak:8443/auth/realms/health-realm/protocol/openid-connect/certs # JWKS fetched over internal HTTPS from Keycloak container name
-      
+
+      # after adding roles attirbute to keycloak
+      KEYCLOAK_ADMIN_BASE_URL: https://keycloak:8443/auth
+      KEYCLOAK_ADMIN_REALM: health-realm
+      KEYCLOAK_ADMIN_CLIENT_ID: backend-client
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET}
+
       # JVM truststore includes our internal CA,
       # allowing TLS verification of https://keycloak:8443
       JAVA_TOOL_OPTIONS: >-

@@ -19,6 +19,7 @@ import be.he2b.healthsec.medical_records.dto.CreatePatientDTO;
 import be.he2b.healthsec.medical_records.dto.PatientDataDTO;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.service.UserService;
+import be.he2b.healthsec.medical_records.service.keycloak.KeycloakAdminService;
 
 @RestController
 @RequestMapping("/api")
@@ -26,6 +27,10 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private KeycloakAdminService keycloakAdminService;
+
 
     // --------------------------------------------------------------
     //  Check if the current authenticated Keycloak user exists
@@ -64,30 +69,30 @@ public class UserController {
     //  Create Patient (first-time onboarding)
     // --------------------------------------------------------------
     @PostMapping("/patient")
-    public ResponseEntity<?> createPatient(
-            @AuthenticationPrincipal Jwt jwt,
-            @RequestBody CreatePatientDTO dto) {
-        try {
-            String keycloakId = jwt.getSubject();
-            
-            String msg = userService.createPatient(
-                keycloakId,
-                dto.getFirstNameEncBase64(),
-                dto.getLastNameEncBase64(),
-                dto.getEmailEncBase64(),
-                dto.getDateOfBirthEncBase64(),
-                dto.getPublicKeyPEM(),
-                dto.getSymmetricKeyEncBase64()
-            );
+    public ResponseEntity<?> createPatient(@AuthenticationPrincipal Jwt jwt,
+                                        @RequestBody CreatePatientDTO dto) {
 
-            return ResponseEntity.ok(
-                Map.of("message", msg)
-            );
+        String keycloakId = jwt.getSubject();
+        String selectedRole = jwt.getClaimAsString("selected_role");
 
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
+        if (!"PATIENT".equals(selectedRole)) {
+            return ResponseEntity.status(403).body(Map.of("error", "selected_role must be PATIENT"));
         }
+
+        String msg = userService.createPatient(
+            keycloakId,
+            dto.getFirstNameEncBase64(),
+            dto.getLastNameEncBase64(),
+            dto.getEmailEncBase64(),
+            dto.getDateOfBirthEncBase64(),
+            dto.getPublicKeyPEM(),
+            dto.getSymmetricKeyEncBase64()
+        );
+
+        // Assign Keycloak realm role
+        keycloakAdminService.assignRealmRole(keycloakId, "PATIENT");
+
+        return ResponseEntity.ok(Map.of("message", msg));
     }
 
 
@@ -95,29 +100,29 @@ public class UserController {
     //  Create Doctor (first-time onboarding)
     // --------------------------------------------------------------
     @PostMapping("/doctor")
-    public ResponseEntity<?> createDoctor(
-            @AuthenticationPrincipal Jwt jwt,
-            @RequestBody CreateDoctorDTO dto) {
-        try {
-            String keycloakId = jwt.getSubject();
-            
-            String msg = userService.createDoctor(
-                keycloakId,
-                dto.getFirstName(),
-                dto.getLastName(),
-                dto.getEmail(),
-                dto.getMedicalOrganization(),
-                dto.getPublicKeyPEM()
-            );
+    public ResponseEntity<?> createDoctor(@AuthenticationPrincipal Jwt jwt,
+                                        @RequestBody CreateDoctorDTO dto) {
 
-            return ResponseEntity.ok(
-                Map.of("message", msg)
-            );
+        String keycloakId = jwt.getSubject();
+        String selectedRole = jwt.getClaimAsString("selected_role");
 
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
+        if (!"DOCTOR".equals(selectedRole)) {
+            return ResponseEntity.status(403).body(Map.of("error", "selected_role must be DOCTOR"));
         }
+
+        String msg = userService.createDoctor(
+            keycloakId,
+            dto.getFirstName(),
+            dto.getLastName(),
+            dto.getEmail(),
+            dto.getMedicalOrganization(),
+            dto.getPublicKeyPEM()
+        );
+
+        // Assign Keycloak realm role
+        keycloakAdminService.assignRealmRole(keycloakId, "DOCTOR");
+
+        return ResponseEntity.ok(Map.of("message", msg));
     }
 
     // --------------------------------------------------------------
