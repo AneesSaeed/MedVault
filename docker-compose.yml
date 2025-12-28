@@ -129,6 +129,9 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_started
+      # Ensure logstash is up before backend emits logs to it
+      logstash:
+        condition: service_healthy
     # Only internal port, not published to host
     expose:
       - "8443"
@@ -170,8 +173,71 @@ services:
         condition: service_started
       keycloak:
         condition: service_started
+  # === ELK STACK FOR LOGGING ===
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: curl -s http://localhost:9200 >/dev/null || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
 
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    group_add:
+      - 0  # Add group 0 (root) to read private keys with 640 permissions (same as keycloak)
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+      - ./logstash/patterns:/usr/share/logstash/patterns
+      # Mount internal CA certs for HTTPS
+      - internal_certs:/certs/internal:ro
+    ports:
+      - "5000:5000"     # TCP input from backend
+      - "5001:5001/udp" # UDP input
+      - "5002:5002"     # HTTPS input from frontend
+    environment:
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      internal_certs:
+        condition: service_healthy
+    healthcheck:
+      # Wait for API (9600) AND TCP input (5000) so backend connects only when ready
+      test: ["CMD-SHELL", "curl -sf http://localhost:9600 && timeout 1 bash -c '</dev/tcp/localhost/5000'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s  # Donne 30s à Logstash pour initialiser son pipeline avant les tests
+    restart: always
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:5601 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
 volumes:
   db_data:
   keycloak_db_data:
   internal_certs:
+  elasticsearch_data:

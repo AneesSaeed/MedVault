@@ -24,6 +24,7 @@ import be.he2b.healthsec.medical_records.repository.MedicalRecordRepository;
 import be.he2b.healthsec.medical_records.repository.PatientDoctorRepository;
 import be.he2b.healthsec.medical_records.repository.PatientRepository;
 import be.he2b.healthsec.medical_records.repository.UserRepository;
+import be.he2b.healthsec.medical_records.logging.LoggingService;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -36,23 +37,35 @@ public class MedicalFileService {
     private final PatientRepository patientRepository;
     private final PatientDoctorRepository patientDoctorRepository;
     private final UserRepository userRepository;
+    private final LoggingService logger;
 
     // ------------------------------------------------------------
     // PATIENT: list own files (must return wrapped key for PATIENT)
     // ------------------------------------------------------------
     @Transactional(readOnly = true)
     public List<MedicalFileInfoDTO> listPatientFiles(UUID patientId) {
+        logger.debug("Listing files for patient", java.util.Map.of(
+            "patientId", patientId
+        ));
         // MedicalRecord is created on first file upload, so return empty list if none exists yet
         MedicalRecord record = medicalRecordRepository.findById(patientId)
             .orElse(null);
         
         if (record == null) {
+            logger.debug("No medical record found for patient", java.util.Map.of(
+                "patientId", patientId
+            ));
             return List.of(); // No medical record yet = no files uploaded
         }
 
-        return medicalFileRepository.findByMedicalRecordId(record.getId()).stream()
+        List<MedicalFileInfoDTO> files = medicalFileRepository.findByMedicalRecordId(record.getId()).stream()
             .map(f -> toInfoDtoForRecipient(f, patientId))
             .collect(Collectors.toList());
+        logger.info("Found files for patient", java.util.Map.of(
+            "count", files.size(),
+            "patientId", patientId
+        ));
+        return files;
     }
 
     // ------------------------------------------------------------
@@ -60,9 +73,17 @@ public class MedicalFileService {
     // ------------------------------------------------------------
     @Transactional(readOnly = true)
     public List<MedicalFileInfoDTO> listFilesForDoctor(UUID doctorId, UUID patientId) {
+        logger.debug("Doctor listing files for patient", java.util.Map.of(
+            "doctorId", doctorId,
+            "patientId", patientId
+        ));
         // must be appointed
         PatientDoctorId relId = new PatientDoctorId(patientId, doctorId);
         if (!patientDoctorRepository.existsById(relId)) {
+            logger.warn("Doctor does not have access to patient", java.util.Map.of(
+                "doctorId", doctorId,
+                "patientId", patientId
+            ));
             throw new IllegalArgumentException("Doctor does not have access to this patient");
         }
 
@@ -71,12 +92,21 @@ public class MedicalFileService {
             .orElse(null);
         
         if (record == null) {
+            logger.debug("No medical record found for patient", java.util.Map.of(
+                "patientId", patientId
+            ));
             return List.of(); // No medical record yet = no files uploaded
         }
 
-        return medicalFileRepository.findByMedicalRecordId(record.getId()).stream()
+        List<MedicalFileInfoDTO> files = medicalFileRepository.findByMedicalRecordId(record.getId()).stream()
             .map(f -> toInfoDtoForRecipient(f, doctorId))
             .collect(Collectors.toList());
+        logger.info("Doctor found files for patient", java.util.Map.of(
+            "doctorId", doctorId,
+            "count", files.size(),
+            "patientId", patientId
+        ));
+        return files;
     }
 
     // ------------------------------------------------------------
@@ -84,9 +114,19 @@ public class MedicalFileService {
     // ------------------------------------------------------------
     @Transactional
     public void shareFileKeysWithDoctor(UUID patientId, UUID doctorId, List<ShareFileKeyDTO> items) {
+        logger.debug("Sharing file keys with doctor", java.util.Map.of(
+            "count", items.size(),
+            "patientId", patientId,
+            "doctorId", doctorId
+        ));
+        
         // must be appointed
         PatientDoctorId relId = new PatientDoctorId(patientId, doctorId);
         if (!patientDoctorRepository.existsById(relId)) {
+            logger.warn("Doctor is not associated with patient", java.util.Map.of(
+                "doctorId", doctorId,
+                "patientId", patientId
+            ));
             throw new IllegalArgumentException("Doctor is not associated with this patient");
         }
 
@@ -117,6 +157,11 @@ public class MedicalFileService {
             row.setWrappedFileKeyEnc(wrapped);
             medicalFileKeyRepository.save(row);
         }
+        logger.info("Successfully shared file keys with doctor", java.util.Map.of(
+            "count", items.size(),
+            "patientId", patientId,
+            "doctorId", doctorId
+        ));
     }
 
 
@@ -128,10 +173,18 @@ public class MedicalFileService {
         MultipartFile encryptedFile,
         String wrappedKeyForPatientBase64
     ) {
+        logger.debug("Uploading file for patient", java.util.Map.of(
+            "patientId", patientId,
+            "sizeBytes", encryptedFile.getSize()
+        ));
+        
         Patient patient = patientRepository.findById(patientId)
             .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
 
         MedicalRecord record = medicalRecordRepository.findById(patientId).orElseGet(() -> {
+            logger.debug("Creating new medical record for patient", java.util.Map.of(
+                "patientId", patientId
+            ));
             MedicalRecord created = MedicalRecord.builder()
                 .patient(patient)
                 .build();
@@ -145,6 +198,9 @@ public class MedicalFileService {
         try {
             contentEnc = encryptedFile.getBytes();
         } catch (Exception e) {
+            logger.error("Failed to read uploaded file", e, java.util.Map.of(
+                "patientId", patientId
+            ));
             throw new IllegalArgumentException("Failed to read uploaded file");
         }
 
@@ -168,6 +224,11 @@ public class MedicalFileService {
             .build();
 
         medicalFileKeyRepository.save(keyRow);
+        logger.info("File uploaded successfully for patient", java.util.Map.of(
+            "patientId", patientId,
+            "fileId", mf.getId(),
+            "sizeBytes", contentEnc.length
+        ));
 
         return mf.getId();
     }
@@ -179,6 +240,12 @@ public class MedicalFileService {
         String uploadDateEncBase64,
         MultipartFile encryptedFile
     ) {
+        logger.debug("Overwriting file for patient", java.util.Map.of(
+            "fileId", fileId,
+            "patientId", patientId,
+            "sizeBytes", encryptedFile.getSize()
+        ));
+        
         MedicalRecord record = medicalRecordRepository.findById(patientId)
             .orElseThrow(() -> new IllegalArgumentException("Medical record not found"));
 
@@ -191,6 +258,10 @@ public class MedicalFileService {
         try {
             contentEnc = encryptedFile.getBytes();
         } catch (Exception e) {
+            logger.error("Failed to read uploaded file during overwrite", e, java.util.Map.of(
+                "fileId", fileId,
+                "patientId", patientId
+            ));
             throw new IllegalArgumentException("Failed to read uploaded file");
         }
 
@@ -198,11 +269,21 @@ public class MedicalFileService {
         existing.setContentEnc(contentEnc);
 
         medicalFileRepository.save(existing);
+        logger.info("File overwritten successfully for patient", java.util.Map.of(
+            "fileId", fileId,
+            "patientId", patientId,
+            "sizeBytes", contentEnc.length
+        ));
         // Note: per-file key does not change on overwrite (same wrapped key stays valid)
     }
 
     @Transactional
     public void deletePatientFile(UUID patientId, UUID fileId) {
+        logger.debug("Deleting file for patient", java.util.Map.of(
+            "fileId", fileId,
+            "patientId", patientId
+        ));
+        
         MedicalRecord record = medicalRecordRepository.findById(patientId)
             .orElseThrow(() -> new IllegalArgumentException("Medical record not found"));
 
@@ -211,18 +292,34 @@ public class MedicalFileService {
 
         // Remove wrapped keys first (avoid FK issues, and ensures no stale access)
         medicalFileKeyRepository.deleteByIdFileId(fileId);
+        logger.debug("Deleted all wrapped keys for file", java.util.Map.of(
+            "fileId", fileId
+        ));
 
         medicalFileRepository.delete(existing);
+        logger.info("File deleted successfully for patient", java.util.Map.of(
+            "fileId", fileId,
+            "patientId", patientId
+        ));
     }
 
     @Transactional(readOnly = true)
     public byte[] getEncryptedFileContent(UUID patientId, UUID fileId) {
+        logger.debug("Getting encrypted content for file of patient", java.util.Map.of(
+            "fileId", fileId,
+            "patientId", patientId
+        ));
+        
         MedicalRecord record = medicalRecordRepository.findById(patientId)
             .orElseThrow(() -> new IllegalArgumentException("Medical record not found"));
 
         MedicalFile existing = medicalFileRepository.findByIdAndMedicalRecordId(fileId, record.getId())
             .orElseThrow(() -> new IllegalArgumentException("File not found"));
 
+        logger.info("Retrieved encrypted file content", java.util.Map.of(
+            "fileId", fileId,
+            "sizeBytes", existing.getContentEnc().length
+        ));
         return existing.getContentEnc();
     }
 

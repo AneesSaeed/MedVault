@@ -1,6 +1,30 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { environment } from "../../../environments/environment";
+import { LoggingService } from './logging.service';
+import { Observable } from 'rxjs';
+
+export interface DoctorInfo {
+  doctorId: string;
+  firstName: string;
+  lastName: string;
+  medicalOrganization: string;
+  publicKeyPEM?: string;
+}
+
+export interface DoctorsResponse { doctors: DoctorInfo[] }
+export interface MyDoctorsResponse { doctorIds: string[] }
+
+export interface PatientEncryptedSummary {
+  patientId: string;
+  firstNameEnc: string;
+  lastNameEnc: string;
+  emailEnc: string;
+  encryptedAESKey: string;
+}
+
+export interface MyPatientsResponse { patients: PatientEncryptedSummary[] }
+export interface PublicKeyResponse { publicKeyPEM: string }
 
 @Injectable({
   providedIn: 'root'
@@ -8,19 +32,22 @@ import { environment } from "../../../environments/environment";
 export class PatientDoctorService {
   private api = environment.apiBaseUrl;
   private http = inject(HttpClient);
+  private logger = inject(LoggingService);
 
   /**
    * Liste tous les médecins disponibles
    */
   listAllDoctors() {
-    return this.http.get<any>(`${this.api}/patient-doctor/doctors`);
+    this.logger.debug('Listing all doctors', {}, 'PatientDoctorService');
+    return this.http.get<DoctorsResponse>(`${this.api}/patient-doctor/doctors`);
   }
 
   /**
    * Recherche des médecins par nom/prénom
    */
   searchDoctors(searchTerm: string) {
-    return this.http.get<any>(`${this.api}/patient-doctor/doctors`, {
+    this.logger.debug('Searching doctors', { searchTerm }, 'PatientDoctorService');
+    return this.http.get<DoctorsResponse>(`${this.api}/patient-doctor/doctors`, {
       params: { search: searchTerm }
     });
   }
@@ -29,7 +56,8 @@ export class PatientDoctorService {
    * Récupère la clé publique RSA d'un médecin
    */
   getDoctorPublicKey(doctorId: string) {
-    return this.http.get<any>(`${this.api}/patient-doctor/doctor/${doctorId}/public-key`);
+    this.logger.debug('Getting public key for doctor', { doctorId }, 'PatientDoctorService');
+    return this.http.get<PublicKeyResponse>(`${this.api}/patient-doctor/doctor/${doctorId}/public-key`);
   }
 
   /**
@@ -38,7 +66,8 @@ export class PatientDoctorService {
    * @param patientId ID du patient
    */
   getPatientPublicKey(patientId: string) {
-    return this.http.get<{ publicKeyPEM: string }>(`${this.api}/patient-doctor/patient/${patientId}/public-key`);
+    this.logger.debug('Getting public key for patient', { patientId }, 'PatientDoctorService');
+    return this.http.get<PublicKeyResponse>(`${this.api}/patient-doctor/patient/${patientId}/public-key`);
   }
 
   /**
@@ -48,6 +77,7 @@ export class PatientDoctorService {
     doctorId: string;
     encryptedPatientAESKeyBase64: string;
   }) {
+    this.logger.debug('Adding doctor to patient', { doctorId: payload.doctorId }, 'PatientDoctorService');
     return this.http.post(`${this.api}/patient-doctor/add`, payload);
   }
 
@@ -55,14 +85,16 @@ export class PatientDoctorService {
    * Récupère la liste des médecins associés au patient actuel
    */
   getMyDoctors() {
-    return this.http.get<any>(`${this.api}/patient-doctor/my-doctors`);
+    this.logger.debug('Getting my doctors', {}, 'PatientDoctorService');
+    return this.http.get<MyDoctorsResponse>(`${this.api}/patient-doctor/my-doctors`);
   }
 
   /**
    * Récupère la liste des patients du médecin actuellement authentifié
    */
   getMyPatients() {
-    return this.http.get<any>(`${this.api}/patient-doctor/my-patients`);
+    this.logger.debug('Getting my patients', {}, 'PatientDoctorService');
+    return this.http.get<MyPatientsResponse>(`${this.api}/patient-doctor/my-patients`);
   }
 
   /**
@@ -71,7 +103,8 @@ export class PatientDoctorService {
    * @returns Données chiffrées: firstName, lastName, email, dob + clé AES chiffrée
    */
   getPatientData(patientId: string) {
-    return this.http.get<any>(`${this.api}/patient-doctor/patient/${patientId}/data`);
+    this.logger.debug('Getting patient data', { patientId }, 'PatientDoctorService');
+    return this.http.get(`${this.api}/patient-doctor/patient/${patientId}/data`) as Observable<Record<string, unknown>>;
   }
 
   /**

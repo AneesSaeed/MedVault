@@ -4,6 +4,7 @@ import be.he2b.healthsec.medical_records.dto.CreatePendingMedicalFileDTO;
 import be.he2b.healthsec.medical_records.dto.PendingMedicalFileInfoDTO;
 import be.he2b.healthsec.medical_records.model.*;
 import be.he2b.healthsec.medical_records.repository.*;
+import be.he2b.healthsec.medical_records.logging.LoggingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,12 +24,17 @@ public class MedicalFileRequestService {
     private final DoctorRepository doctorRepository;
     private final UserRepository userRepository;
     private final PatientDoctorRepository patientDoctorRepository;
+    private final LoggingService logger;
 
     /**
      * Crée une demande d'upload de fichier pour un patient par un docteur.
      */
     @Transactional
     public String createRequest(UUID patientId, String doctorKeycloakId, CreatePendingMedicalFileDTO dto) {
+        logger.debug("Creating file request", java.util.Map.of(
+            "patientId", patientId,
+            "doctorKeycloakId", doctorKeycloakId
+        ));
         // Vérifier patient
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
@@ -42,6 +48,10 @@ public class MedicalFileRequestService {
         // Vérifier la relation PatientDoctor
         PatientDoctorId relId = new PatientDoctorId(patient.getId(), doctor.getId());
         if (!patientDoctorRepository.existsById(relId)) {
+            logger.warn("Doctor does not have access to patient", java.util.Map.of(
+                "doctorId", doctor.getId(),
+                "patientId", patientId
+            ));
             throw new IllegalArgumentException("Doctor does not have access to this patient");
         }
 
@@ -67,7 +77,10 @@ public class MedicalFileRequestService {
      */
     @Transactional(readOnly = true)
     public List<PendingMedicalFileInfoDTO> listForPatient(UUID patientId) {
-        return pendingRepo.findByPatientId(patientId).stream()
+        logger.debug("Listing file requests for patient", java.util.Map.of(
+            "patientId", patientId
+        ));
+        List<PendingMedicalFileInfoDTO> requests = pendingRepo.findByPatientId(patientId).stream()
                 .map(r -> PendingMedicalFileInfoDTO.builder()
                         .id(r.getId().toString())
                         .uploaderDoctorId(r.getUploaderDoctor().getId().toString())
@@ -79,6 +92,11 @@ public class MedicalFileRequestService {
                         .createdAt(r.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
+        logger.info("Found pending file requests for patient", java.util.Map.of(
+            "count", requests.size(),
+            "patientId", patientId
+        ));
+        return requests;
     }
 
     /**
@@ -86,12 +104,24 @@ public class MedicalFileRequestService {
      */
     @Transactional
     public void deleteRequest(UUID requestId, UUID patientId) {
+        logger.debug("Deleting file request", java.util.Map.of(
+            "requestId", requestId,
+            "patientId", patientId
+        ));
         PendingMedicalFileRequest req = pendingRepo.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Request not found"));
         if (!req.getPatient().getId().equals(patientId)) {
+            logger.warn("Request does not belong to patient", java.util.Map.of(
+                "requestId", requestId,
+                "patientId", patientId
+            ));
             throw new IllegalArgumentException("Request does not belong to patient");
         }
         pendingRepo.deleteById(requestId);
+        logger.info("File request deleted by patient", java.util.Map.of(
+            "requestId", requestId,
+            "patientId", patientId
+        ));
     }
 
     private static byte[] requiredDecode(String base64) {

@@ -77,7 +77,12 @@
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
-	</dependencies>
+	<!-- Logstash appender for ELK Stack integration -->
+	<dependency>
+		<groupId>net.logstash.logback</groupId>
+		<artifactId>logstash-logback-encoder</artifactId>
+		<version>7.4</version>
+	</dependency>	</dependencies>
 
 	<build>
 		<plugins>

@@ -22,6 +22,11 @@ BACKEND_P12="$DIR/backend.p12"
 KEYCLOAK_KEY="$DIR/keycloak.key"
 KEYCLOAK_CRT="$DIR/keycloak.crt"
 
+# Logstash server identity (keypair + cert + PKCS12 keystore)
+LOGSTASH_KEY="$DIR/logstash.key"
+LOGSTASH_CRT="$DIR/logstash.crt"
+LOGSTASH_P12="$DIR/logstash.p12"
+
 
 fix_perms() {
   chmod 755 "$DIR" || true
@@ -29,18 +34,23 @@ fix_perms() {
   # Public material
   chmod 644 "$DIR"/*.crt "$DIR"/ca.srl "$DIR"/truststore.jks 2>/dev/null || true
 
-  # Keystore must be readable by backend even if non-root/non-GID0
+  # Keystore readable by services
   chmod 644 "$DIR"/*.p12 2>/dev/null || true
 
-  # Keep private keys restricted (only root/group readable)
+  # Private keys: readable by root and group 0 only (640)
+  # - Backend (UID 0/root): can read directly
+  # - Keycloak (UID 1000, GID 0 via Dockerfile): can read via group 0
+  # - Logstash (UID 1000, GID 0 via group_add): can read via group 0
+  # This is the original security model before TLS/certificates were added
   chmod 640 "$DIR"/*.key "$DIR"/ca.key 2>/dev/null || true
+  chgrp 0 "$DIR"/*.key "$DIR"/ca.key 2>/dev/null || true
 
-  # Optional: keep group 0 for rootless setups, doesn't hurt
+  # Keep group 0 for rootless setups
   chgrp 0 "$DIR"/*.key "$DIR"/*.p12 "$DIR"/ca.key 2>/dev/null || true
 }
 
 
-if [[ -f "$CA_CRT" && -f "$BACKEND_P12" && -f "$KEYCLOAK_CRT" && -f "$TRUSTSTORE" ]]; then
+if [[ -f "$CA_CRT" && -f "$BACKEND_P12" && -f "$KEYCLOAK_CRT" && -f "$LOGSTASH_P12" && -f "$TRUSTSTORE" ]]; then
   echo "Internal certs already exist in $DIR"
   fix_perms
   exit 0
@@ -87,11 +97,18 @@ echo "Issuing backend and keycloak certs..."
 issue backend  "$BACKEND_KEY"  "$BACKEND_CRT"  "DNS:backend,DNS:spring_backend"
 # keycloak cert is valid for DNS:keycloak
 issue keycloak "$KEYCLOAK_KEY" "$KEYCLOAK_CRT" "DNS:keycloak"
+# logstash cert is valid for DNS:logstash
+issue logstash "$LOGSTASH_KEY" "$LOGSTASH_CRT" "DNS:logstash,DNS:secu-project-logstash-1"
 
 echo "Creating backend PKCS12 keystore..."
 # Spring Boot reads PKCS12 keystore for server.ssl.key-store
 openssl pkcs12 -export -name backend -in "$BACKEND_CRT" -inkey "$BACKEND_KEY" \
   -certfile "$CA_CRT" -out "$BACKEND_P12" -passout pass:$STOREPASS
+
+echo "Creating logstash PKCS12 keystore..."
+# Logstash reads PKCS12 keystore for TLS
+openssl pkcs12 -export -name logstash -in "$LOGSTASH_CRT" -inkey "$LOGSTASH_KEY" \
+  -certfile "$CA_CRT" -out "$LOGSTASH_P12" -passout pass:$STOREPASS
 
 echo "Creating Java truststore for internal CA..."
 # Backend JVM uses this truststore to validate Keycloak's TLS cert chain

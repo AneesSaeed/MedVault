@@ -5,6 +5,7 @@ import { PendingMedicalFilesApi } from '../api/pending-medical-files.api';
 import { MedicalFilesApi } from '../api/medical-files.api';
 import { PatientDoctorService } from './patient-doctor.service';
 import { fromBase64 } from '../utils/base64.util';
+import { LoggingService } from './logging.service';
 
 /**
  * Interface pour afficher une demande de fichier déchiffrée à l'écran du patient
@@ -41,6 +42,7 @@ export class PendingFileHelper {
   private readonly pendingFilesApi = inject(PendingMedicalFilesApi);
   private readonly medicalFilesApi = inject(MedicalFilesApi);
   private readonly patientDoctorService = inject(PatientDoctorService);
+  private readonly logger = inject(LoggingService);
 
   private extractErrorMessage(error: unknown): string {
     if (error && typeof error === 'object') {
@@ -70,6 +72,7 @@ export class PendingFileHelper {
    */
   async listPendingRequests(keycloakId: string): Promise<DecryptedPendingFile[]> {
     try {
+      this.logger.debug('Listing pending requests', { keycloakId }, 'PendingFileHelper');
       // 1. Récupérer la liste des demandes (données restent chiffrées)
       const requests = await this.pendingFilesApi.listPendingRequests().toPromise();
       if (!requests) return [];
@@ -77,6 +80,7 @@ export class PendingFileHelper {
       // 2. Récupérer la clé privée RSA du patient
       const patientPrivateKey = await this.keyStore.getRsaPrivateKey(keycloakId);
       if (!patientPrivateKey) {
+        this.logger.warn('Patient private RSA key not found in IndexedDB', { keycloakId }, 'PendingFileHelper');
         throw new Error('Clé privée RSA du patient introuvable');
       }
 
@@ -105,7 +109,7 @@ export class PendingFileHelper {
               );
               fileName = new TextDecoder().decode(decryptedFileName);
             } catch (e) {
-              console.error('Erreur déchiffrement du nom de fichier:', e);
+              this.logger.error('Erreur déchiffrement du nom de fichier', e, { requestId: req.id }, 'PendingFileHelper');
             }
           }
 
@@ -121,7 +125,7 @@ export class PendingFileHelper {
               );
               mimeType = new TextDecoder().decode(decryptedMime);
             } catch (e) {
-              console.error('Erreur déchiffrement du MIME type:', e);
+              this.logger.error('Erreur déchiffrement du MIME type', e, { requestId: req.id }, 'PendingFileHelper');
             }
           }
 
@@ -141,14 +145,16 @@ export class PendingFileHelper {
             _wrappedTempKey: req.wrappedTempKeyForPatientBase64
           });
         } catch (e) {
-          console.error(`Erreur déchiffrement de la demande ${req.id}:`, e);
+          this.logger.error('Erreur déchiffrement de la demande', e, { requestId: req.id }, 'PendingFileHelper');
           // Continuer avec la prochaine demande
         }
       }
 
+      this.logger.info('Pending requests decrypted', { count: decrypted.length }, 'PendingFileHelper');
       return decrypted;
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
+      this.logger.error('Erreur lors de la récupération des demandes', e, { keycloakId }, 'PendingFileHelper');
       throw new Error(`Erreur lors de la récupération des demandes: ${message}`);
     }
   }
@@ -159,9 +165,12 @@ export class PendingFileHelper {
    */
   async rejectRequest(requestId: string): Promise<void> {
     try {
+      this.logger.debug('Rejecting request', { requestId }, 'PendingFileHelper');
       await this.pendingFilesApi.rejectRequest(requestId).toPromise();
+      this.logger.logAction('PENDING_REQUEST_REJECTED', '', { requestId }, 'PendingFileHelper');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
+      this.logger.error('Erreur lors du rejet de la demande', e, { requestId }, 'PendingFileHelper');
       throw new Error(`Erreur lors du rejet de la demande: ${message}`);
     }
   }
@@ -179,9 +188,11 @@ export class PendingFileHelper {
     pendingFile: DecryptedPendingFile
   ): Promise<Blob> {
     try {
+      this.logger.debug('Viewing file (decrypt)', { requestId: pendingFile.id }, 'PendingFileHelper');
       // 1. Récupérer la clé privée RSA du patient
       const patientPrivateKey = await this.keyStore.getRsaPrivateKey(keycloakId);
       if (!patientPrivateKey) {
+        this.logger.warn('Patient private RSA key not found in IndexedDB', { keycloakId }, 'PendingFileHelper');
         throw new Error('Clé privée RSA du patient introuvable');
       }
 
@@ -203,9 +214,12 @@ export class PendingFileHelper {
       );
 
       // 5. Créer un Blob avec le contenu déchiffré
-      return new Blob([decryptedContent], { type: pendingFile.mimeType });
+      const blob = new Blob([decryptedContent], { type: pendingFile.mimeType });
+      this.logger.info('File decrypted for view', { requestId: pendingFile.id, size: (decryptedContent as ArrayBuffer).byteLength }, 'PendingFileHelper');
+      return blob;
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
+      this.logger.error('Erreur lors du déchiffrement du fichier', e, { requestId: pendingFile.id }, 'PendingFileHelper');
       throw new Error(`Erreur lors du déchiffrement du fichier: ${message}`);
     }
   }
@@ -222,9 +236,11 @@ export class PendingFileHelper {
     pendingFile: DecryptedPendingFile
   ): Promise<string> {
     try {
+      this.logger.debug('Accepting request and adding to medical record', { requestId: pendingFile.id }, 'PendingFileHelper');
       // 1. Récupérer la clé privée RSA du patient
       const patientPrivateKey = await this.keyStore.getRsaPrivateKey(keycloakId);
       if (!patientPrivateKey) {
+        this.logger.warn('Patient private RSA key not found in IndexedDB', { keycloakId }, 'PendingFileHelper');
         throw new Error('Clé privée RSA du patient introuvable');
       }
 
@@ -279,6 +295,7 @@ export class PendingFileHelper {
       if (!uploadRes?.fileId) {
         throw new Error('Échec de l\'upload du fichier médical');
       }
+      this.logger.logAction('MEDICAL_FILE_UPLOADED', keycloakId, { fileId: uploadRes.fileId, fileName: pendingFile.fileName, size: pendingFile.fileSize }, 'PendingFileHelper');
 
       // 11. Récupérer la liste des médecins du patient
       const myDoctorsRes = await this.patientDoctorService.getMyDoctors().toPromise();
@@ -291,7 +308,7 @@ export class PendingFileHelper {
           const doctorPubKeyRes = await this.patientDoctorService.getDoctorPublicKey(doctorId).toPromise();
           const doctorPublicKeyPEM = doctorPubKeyRes?.publicKeyPEM;
           if (!doctorPublicKeyPEM) {
-            console.error(`Clé publique introuvable pour le médecin ${doctorId}`);
+            this.logger.warn('Clé publique introuvable pour le médecin', { doctorId }, 'PendingFileHelper');
             continue;
           }
           const doctorPublicKey = await this.crypto.importPublicKey(doctorPublicKeyPEM);
@@ -303,8 +320,9 @@ export class PendingFileHelper {
           await this.medicalFilesApi.shareKeysWithDoctor(doctorId, [
             { fileId: uploadRes.fileId, wrappedKeyForDoctorBase64: wrappedForDoctor }
           ]).toPromise();
+          this.logger.logAction('FILE_KEY_SHARED_WITH_DOCTOR', keycloakId, { doctorId, fileId: uploadRes.fileId }, 'PendingFileHelper');
         } catch (e) {
-          console.error(`Erreur partage avec médecin ${doctorId}:`, e);
+          this.logger.error('Erreur partage avec médecin', e, { doctorId, fileId: uploadRes.fileId }, 'PendingFileHelper');
           // Continuer avec les autres médecins
         }
       }
@@ -312,9 +330,11 @@ export class PendingFileHelper {
       // 13. Supprimer la demande en attente
       await this.rejectRequest(pendingFile.id);
 
+      this.logger.info('Pending request accepted and file shared', { requestId: pendingFile.id, fileId: uploadRes.fileId, doctorsCount: doctorIds.length }, 'PendingFileHelper');
       return uploadRes.fileId;
     } catch (e: unknown) {
       const message = this.extractErrorMessage(e);
+      this.logger.error('Erreur lors de l\'acceptation du fichier', e, { requestId: pendingFile.id }, 'PendingFileHelper');
       throw new Error(`Erreur lors de l'acceptation du fichier: ${message}`);
     }
   }

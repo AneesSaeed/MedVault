@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { LoggingService } from './logging.service';
 import { CryptoService } from './crypto.service';
 import { KeyStoreService } from './key-store.service';
 import { PatientDataApi } from '../api/patient-data.api';
@@ -17,7 +18,8 @@ export class PatientDataService {
   constructor(
     private patientDataApi: PatientDataApi,
     private crypto: CryptoService,
-    private keyStore: KeyStoreService
+    private keyStore: KeyStoreService,
+    private logger: LoggingService
   ) {}
 
   /**
@@ -34,15 +36,18 @@ export class PatientDataService {
    * @returns PatientData déchiffrées
    */
   async getPatientData(patientId: string, keycloakId: string): Promise<PatientData> {
+    this.logger.debug('Fetching and decrypting patient data', { patientId, keycloakId }, 'PatientDataService');
     // 1. Récupérer données chiffrées du backend
     const encryptedData = await this.patientDataApi.getPatientData(patientId).toPromise();
     if (!encryptedData) {
+      this.logger.error('Failed to fetch patient data from server', null, { patientId }, 'PatientDataService');
       throw new Error('Failed to fetch patient data from server');
     }
 
     // NEW:
     const privKey = await this.keyStore.getRsaPrivateKey(keycloakId);
     if (!privKey) {
+      this.logger.warn('Patient private RSA key not found in IndexedDB (this device)', { keycloakId }, 'PatientDataService');
       throw new Error('Patient private RSA key not found in IndexedDB (this device)');
     }
 
@@ -59,6 +64,8 @@ export class PatientDataService {
       this.decryptField(encryptedData.emailEncBase64, symmetricKey),
       this.decryptField(encryptedData.dateOfBirthEncBase64, symmetricKey)
     ]);
+
+    this.logger.info('Patient data decrypted successfully', { patientId }, 'PatientDataService');
 
     return {
       patientId: encryptedData.patientId,

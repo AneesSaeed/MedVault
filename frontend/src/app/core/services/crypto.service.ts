@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { LoggingService } from './logging.service';
 
 /**
  * Service de chiffrement utilisant Web Crypto API
@@ -15,26 +16,44 @@ import { Injectable } from '@angular/core';
 })
 export class CryptoService {
 
+  constructor(private logger: LoggingService) {}
+
   /**
    * Génère une paire de clés RSA (2048 bits)
    * @returns Promise avec {publicKey, privateKey} en format CryptoKey
    */
   async generateRSAKeyPair(): Promise<{ publicKey: CryptoKey; privateKey: CryptoKey }> {
-    const keyPair = await window.crypto.subtle.generateKey(
-      {
-        name: 'RSA-OAEP',
-        modulusLength: 2048,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: 'SHA-256',
-      },
-      false,
-      ['encrypt', 'decrypt']
-    );
+    this.logger.debug('Generating RSA-2048 key pair...', { algorithm: 'RSA-OAEP', keySize: 2048 }, 'CryptoService');
+    const startTime = performance.now();
+    
+    try {
+      const keyPair = await window.crypto.subtle.generateKey(
+        {
+          name: 'RSA-OAEP',
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: 'SHA-256',
+        },
+        false,
+        ['encrypt', 'decrypt']
+      );
 
-    return {
-      publicKey: keyPair.publicKey,
-      privateKey: keyPair.privateKey
-    };
+      const duration = Math.round(performance.now() - startTime);
+      this.logger.logSecurityEvent('RSA_KEY_PAIR_GENERATED', 'client', 'LOW', {
+        algorithm: 'RSA-OAEP',
+        modulusLength: 2048,
+        hash: 'SHA-256',
+        durationMs: duration
+      });
+
+      return {
+        publicKey: keyPair.publicKey,
+        privateKey: keyPair.privateKey
+      };
+    } catch (error) {
+      this.logger.error('Failed to generate RSA key pair', error, {}, 'CryptoService');
+      throw error;
+    }
   }
 
 
@@ -43,14 +62,29 @@ export class CryptoService {
    * @returns Promise avec la clé CryptoKey
    */
   async generateAESKey(): Promise<CryptoKey> {
-    return await window.crypto.subtle.generateKey(
-      {
-        name: 'AES-GCM',
-        length: 256,
-      },
-      true, // extractable
-      ['encrypt', 'decrypt']
-    );
+    this.logger.debug('Generating AES-256 symmetric key...', { algorithm: 'AES-GCM', keyLength: 256 }, 'CryptoService');
+    
+    try {
+      const key = await window.crypto.subtle.generateKey(
+        {
+          name: 'AES-GCM',
+          length: 256,
+        },
+        true, // extractable
+        ['encrypt', 'decrypt']
+      );
+
+      this.logger.logSecurityEvent('AES_KEY_GENERATED', 'client', 'LOW', {
+        algorithm: 'AES-GCM',
+        keyLength: 256,
+        extractable: true
+      });
+
+      return key;
+    } catch (error) {
+      this.logger.error('Failed to generate AES key', error, {}, 'CryptoService');
+      throw error;
+    }
   }
 
   /**
@@ -68,9 +102,19 @@ export class CryptoService {
    * @returns Promise avec la clé publique en format PEM
    */
   async exportPublicKey(publicKey: CryptoKey): Promise<string> {
-    const exported = await window.crypto.subtle.exportKey('spki', publicKey);
-    const exportedAsBase64 = this.arrayBufferToBase64(exported);
-    return `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64}\n-----END PUBLIC KEY-----`;
+    this.logger.debug('Exporting RSA public key to PEM format...', {}, 'CryptoService');
+    
+    try {
+      const exported = await window.crypto.subtle.exportKey('spki', publicKey);
+      const exportedAsBase64 = this.arrayBufferToBase64(exported);
+      const pem = `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64}\n-----END PUBLIC KEY-----`;
+      
+      this.logger.info('RSA public key exported successfully', { format: 'PEM', size: pem.length }, 'CryptoService');
+      return pem;
+    } catch (error) {
+      this.logger.error('Failed to export public key', error, {}, 'CryptoService');
+      throw error;
+    }
   }
 
   /**
@@ -79,25 +123,40 @@ export class CryptoService {
    * @returns Promise avec la clé publique CryptoKey
    */
   async importPublicKey(pem: string): Promise<CryptoKey> {
-    const pemHeader = '-----BEGIN PUBLIC KEY-----';
-    const pemFooter = '-----END PUBLIC KEY-----';
-    const pemContents = pem
-      .replace(pemHeader, '')
-      .replace(pemFooter, '')
-      .replace(/\s/g, '');
+    this.logger.debug('Importing RSA public key from PEM format...', { pemLength: pem.length }, 'CryptoService');
+    
+    try {
+      const pemHeader = '-----BEGIN PUBLIC KEY-----';
+      const pemFooter = '-----END PUBLIC KEY-----';
+      const pemContents = pem
+        .replace(pemHeader, '')
+        .replace(pemFooter, '')
+        .replace(/\s/g, '');
 
-    const binaryDer = this.base64ToArrayBuffer(pemContents);
+      const binaryDer = this.base64ToArrayBuffer(pemContents);
 
-    return await window.crypto.subtle.importKey(
-      'spki',
-      binaryDer,
-      {
-        name: 'RSA-OAEP',
-        hash: 'SHA-256',
-      },
-      true,
-      ['encrypt']
-    );
+      const key = await window.crypto.subtle.importKey(
+        'spki',
+        binaryDer,
+        {
+          name: 'RSA-OAEP',
+          hash: 'SHA-256',
+        },
+        true,
+        ['encrypt']
+      );
+
+      this.logger.logSecurityEvent('RSA_PUBLIC_KEY_IMPORTED', 'client', 'MEDIUM', {
+        format: 'PEM',
+        algorithm: 'RSA-OAEP',
+        hash: 'SHA-256'
+      });
+
+      return key;
+    } catch (error) {
+      this.logger.error('Failed to import public key', error, { pemLength: pem?.length }, 'CryptoService');
+      throw error;
+    }
   }
 
   /**

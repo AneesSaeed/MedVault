@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.hibernate.usertype.UserType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -23,6 +22,7 @@ import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.PatientDoctorService;
 import be.he2b.healthsec.medical_records.model.PatientDoctorId;
 import be.he2b.healthsec.medical_records.service.UserService;
+import be.he2b.healthsec.medical_records.logging.LoggingService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -32,6 +32,7 @@ public class PatientDoctorController {
     private final PatientDoctorService patientDoctorService;
     private final UserService userService;
     private final be.he2b.healthsec.medical_records.repository.PatientDoctorRepository patientDoctorRepository;
+    private final LoggingService logger;
 
     /**
      * Récupère la clé publique RSA d'un médecin.
@@ -40,11 +41,14 @@ public class PatientDoctorController {
      */
     @GetMapping("/doctor/{doctorId}/public-key")
     public ResponseEntity<?> getDoctorPublicKey(@PathVariable String doctorId) {
+        logger.logApiRequest("GET", "/api/patient-doctor/doctor/" + doctorId + "/public-key", "anonymous");
         try {
             UUID doctorUuid = UUID.fromString(doctorId);
             String publicKey = patientDoctorService.getDoctorPublicKey(doctorUuid);
+            logger.info("Doctor public key accessed", Map.of("doctorId", doctorId));
             return ResponseEntity.ok(Map.of("publicKeyPEM", publicKey));
         } catch (IllegalArgumentException e) {
+            logger.warn("Failed to get doctor public key", Map.of("doctorId", doctorId, "error", e.getMessage()));
             return ResponseEntity.badRequest()
                 .body(Map.of("error", e.getMessage()));
         }
@@ -58,32 +62,50 @@ public class PatientDoctorController {
      */
     @GetMapping("/patient/{patientId}/public-key")
     public ResponseEntity<?> getPatientPublicKey(@AuthenticationPrincipal Jwt jwt,
-                                                @PathVariable String patientId) {
+                                                 @PathVariable String patientId) {
+        String keycloakId = jwt.getSubject();
+        logger.logApiRequest("GET", "/api/patient-doctor/patient/" + patientId + "/public-key", keycloakId);
+        
         try {
             UUID requestedPatientId = UUID.fromString(patientId);
 
-            String keycloakId = jwt.getSubject();
             User caller = userService.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
             if (JwtRoles.hasRealmRole(jwt, "PATIENT")) {
                 // patient can only request their own key
                 if (!caller.getId().equals(requestedPatientId)) {
+                    logger.logSecurityEvent("UNAUTHORIZED_PATIENT_KEY_ACCESS", keycloakId, "MEDIUM", Map.of(
+                        "requestedPatientId", patientId,
+                        "callerPatientId", caller.getId().toString()
+                    ));
                     return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
                 }
             } else if (JwtRoles.hasRealmRole(jwt, "DOCTOR")) {
                 // doctor must be linked to patient
                 PatientDoctorId relId = new PatientDoctorId(requestedPatientId, caller.getId());
                 if (!patientDoctorRepository.existsById(relId)) {
+                    logger.logSecurityEvent("UNAUTHORIZED_DOCTOR_PATIENT_KEY_ACCESS", keycloakId, "MEDIUM", Map.of(
+                        "patientId", patientId,
+                        "doctorId", caller.getId().toString()
+                    ));
                     return ResponseEntity.status(403).body(Map.of("error", "Doctor not linked to patient"));
                 }
             } else {
+                logger.logSecurityEvent("INVALID_ROLE_PATIENT_KEY_ACCESS", keycloakId, "MEDIUM", Map.of(
+                        "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt))
+                ));
                 return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
             }
 
             String publicKeyPEM = patientDoctorService.getPatientPublicKey(requestedPatientId);
+            logger.info("Patient public key accessed", Map.of(
+                "patientId", patientId,
+                "requesterId", keycloakId
+            ));
             return ResponseEntity.ok(Map.of("publicKeyPEM", publicKeyPEM));
         } catch (IllegalArgumentException e) {
+            logger.error("Failed to get patient public key: " + e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -91,8 +113,16 @@ public class PatientDoctorController {
 
     @GetMapping("/my-doctors/keys")
     public ResponseEntity<?> myDoctorsWithKeys(@AuthenticationPrincipal Jwt jwt) {
+        String keycloakId = jwt.getSubject();
+        logger.logApiRequest("GET", "/api/patient-doctor/my-doctors/keys", keycloakId);
+        
         UUID patientId = currentPatientIdOrThrow(jwt); 
-        return ResponseEntity.ok(Map.of("doctors", patientDoctorService.getPatientDoctorsWithKeys(patientId)));
+        var doctors = patientDoctorService.getPatientDoctorsWithKeys(patientId);
+        logger.info("Patient retrieved doctors with keys", Map.of(
+            "patientId", patientId.toString(),
+            "doctorsCount", doctors.size()
+        ));
+        return ResponseEntity.ok(Map.of("doctors", doctors));
     }
 
 
@@ -104,15 +134,25 @@ public class PatientDoctorController {
     @GetMapping("/doctors")
     public ResponseEntity<?> listAllDoctors(
             @org.springframework.web.bind.annotation.RequestParam(required = false) String search) {
+        logger.logApiRequest("GET", "/api/patient-doctor/doctors", "anonymous");
+        
         try {
             List<DoctorInfoDTO> doctors;
             if (search != null && !search.trim().isEmpty()) {
                 doctors = patientDoctorService.searchDoctorsByName(search.trim());
+                logger.info("Doctors searched", Map.of(
+                    "searchTerm", search.trim(),
+                    "resultsCount", doctors.size()
+                ));
             } else {
                 doctors = patientDoctorService.listAllDoctors();
+                logger.info("All doctors listed", Map.of(
+                    "doctorsCount", doctors.size()
+                ));
             }
             return ResponseEntity.ok(Map.of("doctors", doctors));
         } catch (Exception e) {
+            logger.error("Failed to list doctors: " + e.getMessage(), e);
             return ResponseEntity.badRequest()
                 .body(Map.of("error", e.getMessage()));
         }
@@ -124,14 +164,24 @@ public class PatientDoctorController {
      * Selon l'énoncé : "A patient can add or remove a doctor to his list of appointed doctors."
      */
     @PostMapping("/add")
-    public ResponseEntity<?> addDoctorToPatient(@AuthenticationPrincipal Jwt jwt,
-                                                @RequestBody AddDoctorToPatientDTO dto) {
+    public ResponseEntity<?> addDoctorToPatient
+    (
+        @AuthenticationPrincipal Jwt jwt,
+        @RequestBody AddDoctorToPatientDTO dto
+    ) {
+
+        String keycloakId = jwt.getSubject();
+        logger.logApiRequest("POST", "/api/patient-doctor/add", keycloakId);
+        
         try {
             if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
-                return ResponseEntity.status(403).body(Map.of("error", "Only patients can add doctors"));
+                logger.logSecurityEvent("UNAUTHORIZED_DOCTOR_ADD", keycloakId, "MEDIUM", Map.of(
+                        "reason", "JWT does not have PATIENT role",
+                        "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt))
+                ));
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Only patients can add doctors"));
             }
-
-            String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -144,8 +194,15 @@ public class PatientDoctorController {
                 dto.getEncryptedPatientAESKeyBase64()
             );
 
+            logger.logAction("PATIENT_ADDED_DOCTOR", keycloakId, Map.of(
+                "patientId", patientId.toString(),
+                "doctorId", dto.getDoctorId(),
+                "hasEncryptedKey", dto.getEncryptedPatientAESKeyBase64() != null
+            ));
+
             return ResponseEntity.ok(Map.of("message", msg));
         } catch (IllegalArgumentException e) {
+            logger.error("Failed to add doctor to patient: " + e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -156,18 +213,29 @@ public class PatientDoctorController {
      */
     @GetMapping("/my-doctors")
     public ResponseEntity<?> getMyDoctors(@AuthenticationPrincipal Jwt jwt) {
+        String keycloakId = jwt.getSubject();
+        logger.logApiRequest("GET", "/api/patient-doctor/my-doctors", keycloakId);
+
         try {
             if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
+                logger.logSecurityEvent("NON_PATIENT_MY_DOCTORS_ACCESS", keycloakId, "MEDIUM", Map.of(
+                        "reason", "JWT does not have PATIENT role",
+                        "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt))
+                ));
                 return ResponseEntity.status(403).body(Map.of("error", "Only patients can view their doctors"));
             }
 
-            String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
             List<UUID> doctorIds = patientDoctorService.getPatientDoctors(user.getId());
+            logger.info("Patient retrieved their doctors list", Map.of(
+                    "patientId", user.getId().toString(),
+                    "doctorsCount", doctorIds.size()
+            ));
             return ResponseEntity.ok(Map.of("doctorIds", doctorIds));
         } catch (IllegalArgumentException e) {
+            logger.error("Failed to get patient doctors: " + e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -178,22 +246,32 @@ public class PatientDoctorController {
      */
     @GetMapping("/my-patients")
     public ResponseEntity<?> getMyPatients(@AuthenticationPrincipal Jwt jwt) {
+        String keycloakId = jwt.getSubject();
+        logger.logApiRequest("GET", "/api/patient-doctor/my-patients", keycloakId);
+
         try {
             if (!JwtRoles.hasRealmRole(jwt, "DOCTOR")) {
+                logger.logSecurityEvent("NON_DOCTOR_MY_PATIENTS_ACCESS", keycloakId, "MEDIUM", Map.of(
+                        "reason", "JWT does not have DOCTOR role",
+                        "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt))
+                ));
                 return ResponseEntity.status(403).body(Map.of("error", "Only doctors can view their patients"));
             }
 
-            String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
             var patients = patientDoctorService.getDoctorPatients(user.getId());
+            logger.info("Doctor retrieved their patients list", Map.of(
+                    "doctorId", user.getId().toString(),
+                    "patientsCount", patients.size()
+            ));
             return ResponseEntity.ok(Map.of("patients", patients));
         } catch (IllegalArgumentException e) {
+            logger.error("Failed to get doctor patients: " + e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-
 
     /**
      * Récupère les données chiffrées d'un patient spécifique.
@@ -202,22 +280,34 @@ public class PatientDoctorController {
      */
     @GetMapping("/patient/{patientId}/data")
     public ResponseEntity<?> getPatientData(@AuthenticationPrincipal Jwt jwt,
-                                        @PathVariable String patientId) {
+                                            @PathVariable String patientId) {
+        String keycloakId = jwt.getSubject();
+        logger.logApiRequest("GET", "/api/patient-doctor/patient/" + patientId + "/data", keycloakId);
+
         try {
             if (!JwtRoles.hasRealmRole(jwt, "DOCTOR")) {
+                logger.logSecurityEvent("NON_DOCTOR_PATIENT_DATA_ACCESS", keycloakId, "HIGH", Map.of(
+                        "reason", "JWT does not have DOCTOR role",
+                        "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt)),
+                        "patientId", patientId
+                ));
                 return ResponseEntity.status(403).body(Map.of("error", "Only doctors can view patient data"));
             }
 
-            String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
             UUID doctorId = user.getId();
             UUID patientUuid = UUID.fromString(patientId);
 
             var patientData = userService.getPatientData(patientUuid, doctorId);
+            logger.logAction("DOCTOR_ACCESSED_PATIENT_DATA", keycloakId, Map.of(
+                    "doctorId", doctorId.toString(),
+                    "patientId", patientId
+            ));
             return ResponseEntity.ok(patientData);
         } catch (IllegalArgumentException e) {
+            logger.error("Failed to get patient data: " + e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -229,24 +319,38 @@ public class PatientDoctorController {
     @DeleteMapping("/remove/{doctorId}")
     public ResponseEntity<?> removeDoctorFromPatient(@AuthenticationPrincipal Jwt jwt,
                                                     @PathVariable String doctorId) {
+        String keycloakId = jwt.getSubject();
+        logger.logApiRequest("DELETE", "/api/patient-doctor/remove/" + doctorId, keycloakId);
+
         try {
             if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
+                logger.logSecurityEvent("NON_PATIENT_REMOVE_DOCTOR", keycloakId, "MEDIUM", Map.of(
+                        "reason", "JWT does not have PATIENT role",
+                        "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt)),
+                        "doctorId", doctorId
+                ));
                 return ResponseEntity.status(403).body(Map.of("error", "Only patients can remove doctors"));
             }
 
-            String keycloakId = jwt.getSubject();
             User user = userService.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
             UUID patientId = user.getId();
             UUID doctorUuid = UUID.fromString(doctorId);
 
             patientDoctorService.removeDoctorFromPatient(patientId, doctorUuid);
+
+            logger.logAction("PATIENT_REMOVED_DOCTOR", keycloakId, Map.of(
+                    "patientId", patientId.toString(),
+                    "doctorId", doctorId
+            ));
             return ResponseEntity.ok(Map.of("message", "Doctor removed successfully"));
         } catch (IllegalArgumentException e) {
+            logger.error("Failed to remove doctor: " + e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
 
     // Helpers
     private UUID currentPatientIdOrThrow(Jwt jwt) {

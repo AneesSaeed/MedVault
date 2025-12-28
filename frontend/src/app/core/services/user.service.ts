@@ -1,6 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { environment } from "../../../environments/environment";
+import { LoggingService } from './logging.service';
 
 @Injectable({
   providedIn: 'root'
@@ -8,20 +9,25 @@ import { environment } from "../../../environments/environment";
 export class UserService {
   private api = environment.apiBaseUrl;
   private http = inject(HttpClient);
+  private logger = inject(LoggingService);
 
   userExists() {
+    this.logger.debug('Checking if user exists');
     return this.http.get<boolean>(`${this.api}/user/exists`);
   }
 
   getMe() {
+    this.logger.debug('Getting current user info');
     return this.http.get<{ userId: string }>(`${this.api}/user/me`);
   }
 
   createPatient(payload: CreatePatientDTO) {
+    this.logger.debug('Creating patient account');
     return this.http.post(`${this.api}/patient`, payload)
   }
 
   createDoctor(payload: CreateDoctorDTO) {
+    this.logger.debug('Creating doctor account');
     return this.http.post(`${this.api}/doctor`, payload)
   }
 }

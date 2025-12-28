@@ -36,3 +36,7 @@ build/
 *.md
 !README.md
 *.pdf
+cumentation
+*.md
+!README.md
+*.pdf
