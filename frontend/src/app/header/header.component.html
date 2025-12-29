@@ -14,7 +14,7 @@
 </div>
 
 <nav class="nav">
-  <a routerLink="/" routerLinkActive="active">Accueil</a>
+  <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
   <a *ngIf="role==='PATIENT'" routerLink="/my-doctors" routerLinkActive="active">Mes médecins</a>
   <a *ngIf="role==='PATIENT'" routerLink="/pending-files" routerLinkActive="active">Fichiers en attente</a>
 </nav>
