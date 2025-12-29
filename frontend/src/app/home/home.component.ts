@@ -71,10 +71,20 @@ export class HomeComponent implements OnInit {
 
         this.userContext.loadUserContext$().subscribe({
           next: () => {
-            if (this.role === 'PATIENT') {
+            const role = this.userContext.role;
+
+            if (role === 'DOCTOR') {
+              this.router.navigateByUrl('/my-patients');
+              return;
+            }
+
+            if (role === 'PATIENT') {
               this.loadPatientData();
               this.refresh();
+              return;
             }
+
+            this.error = 'Unknown role';
           },
           error: () => {
             this.error = 'Failed to load user context';

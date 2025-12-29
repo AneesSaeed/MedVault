@@ -1,92 +1,35 @@
 <div class="page">
-  <h2>Mes patients</h2>
+  <div class="top">
+    <h2>Mes patients</h2>
+  </div>
 
-  <div *ngIf="loading">Chargement…</div>
+  <div *ngIf="loading" class="muted">Chargement…</div>
   <div *ngIf="error" class="msg error">{{ error }}</div>
 
-  <ul class="patients" *ngIf="!loading && patients.length">
-    <li
+  <div class="folders" *ngIf="!loading && !error && patients.length">
+    <button
+      type="button"
+      class="folder"
       *ngFor="let p of patients"
-      class="patient"
-      [class.selected]="p.patientId === selectedPatientId"
-      (click)="selectPatient(p)"
-      role="button"
-      tabindex="0"
+      (click)="openPatient(p)"
     >
-      <div class="main">
+      <div class="icon" aria-hidden="true"></div>
+      <div class="text">
         <div class="name">{{ p.firstName }} {{ p.lastName }}</div>
-        <div class="email">{{ p.email }}</div>
+        <div class="meta">{{ p.email }}</div>
       </div>
+    </button>
+  </div>
 
-      <div class="actions">
-        <button (click)="$event.stopPropagation(); loadPatientFiles(p.patientId)">
-          Fichiers
-        </button>
-
-        <button
-          (click)="$event.stopPropagation(); loadDetails(p)"
-          [disabled]="detailsLoading[p.patientId]"
-        >
-          {{ detailsLoading[p.patientId] ? 'Chargement…' : 'Détails' }}
-        </button>
-      </div>
-
-      <div class="details" *ngIf="p.dob">
-        <strong>Date de naissance:</strong> {{ p.dob }}
-      </div>
-
-      <!-- Files section for selected patient -->
-      <div *ngIf="selectedPatientId === p.patientId" class="files">
-        <div *ngIf="filesLoading">Chargement fichiers…</div>
-        <div *ngIf="filesError" class="msg error">{{ filesError }}</div>
-
-        <div *ngIf="!filesLoading && !filesError && !patientFiles.length">
-          Aucun fichier.
-        </div>
-
-        <ul *ngIf="!filesLoading && !filesError && patientFiles.length">
-          <li *ngFor="let f of patientFiles">
-            <span>{{ f.fileName }} — {{ f.uploadDateIso }} — {{ f.sizeBytes }} bytes</span>
-            <button (click)="$event.stopPropagation(); downloadPatientFile(f)">Télécharger</button>
-          </li>
-        </ul>
-
-        <!-- Upload section -->
-        <div class="upload-section">
-          <h4>Proposer un fichier médical</h4>
-          <div *ngIf="uploadError" class="msg error">{{ uploadError }}</div>
-          <div *ngIf="uploadSuccess" class="msg success">{{ uploadSuccess }}</div>
-
-          <div class="upload-form">
-            <input
-              type="file"
-              #fileInput
-              (change)="onFileSelected($event)"
-              [disabled]="uploadLoading"
-            />
-            <span *ngIf="selectedFile" class="file-name">{{ selectedFile.name }}</span>
-
-            <div class="upload-actions">
-              <button
-                (click)="uploadFileToPatient()"
-                [disabled]="!selectedFile || uploadLoading"
-              >
-                {{ uploadLoading ? 'Upload en cours…' : 'Envoyer le fichier' }}
-              </button>
-              <button
-                (click)="clearFileSelection()"
-                [disabled]="!selectedFile || uploadLoading"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </li>
-  </ul>
-
-  <div *ngIf="!loading && !patients.length" class="empty">
+  <div *ngIf="!loading && !error && !patients.length" class="empty">
     Aucun patient à afficher.
   </div>
 </div>
+
+<app-base-modal
+  *ngIf="modalOpen"
+  [title]="modalTitle"
+  [component]="modalComponent"
+  [data]="modalData"
+  (closed)="onModalClosed()"
+></app-base-modal>

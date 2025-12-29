@@ -24,6 +24,7 @@ import { DoctorSearchComponent } from './doctor-search/doctor-search.component';
 import { MyPatientsComponent } from './my-patients/my-patients.component';
 import { MyDoctorsComponent } from './my-doctors/my-doctors.component';
 import { PendingMedicalFilesComponent } from './pending-medical-files/pending-medical-files.component';
+import { BaseModalComponent } from './shared/modal/base-modal/base-modal.component';
 
 @NgModule({ declarations: [
         AppComponent, // Main application UI component
@@ -33,13 +34,15 @@ import { PendingMedicalFilesComponent } from './pending-medical-files/pending-me
         DoctorSearchComponent,
         MyPatientsComponent,
         MyDoctorsComponent,
-        PendingMedicalFilesComponent
+        PendingMedicalFilesComponent,
     ],
     bootstrap: [AppComponent] // Application starts from this component
     , imports: [BrowserModule,
         KeycloakAngularModule, // Enables Keycloak features in Angular
         AppRoutingModule,
-        FormsModule], providers: [
+        FormsModule,
+        BaseModalComponent
+      ], providers: [
         {
             provide: APP_INITIALIZER,
             useFactory: initializeKeycloak, // Run our Keycloak init BEFORE Angular loads
