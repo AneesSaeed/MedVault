@@ -15,7 +15,6 @@
 
 <nav class="nav">
   <a routerLink="/" routerLinkActive="active">Accueil</a>
-  <a *ngIf="role==='PATIENT'" routerLink="/doctors" routerLinkActive="active">Rechercher un médecin</a>
   <a *ngIf="role==='PATIENT'" routerLink="/my-doctors" routerLinkActive="active">Mes médecins</a>
   <a *ngIf="role==='PATIENT'" routerLink="/pending-files" routerLinkActive="active">Fichiers en attente</a>
 </nav>

@@ -1,25 +1,29 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { AuthService } from '../core/services/auth.service';
 import { AddDoctorHelper } from '../core/services/add-doctor-helper';
 import { UserContextService } from '../core/services/user-context.service';
 import { LoggingService } from '../core/services/logging.service';
+import { ModalRef } from '../shared/modal/base-modal/modal-ref';
 
 interface Doctor {
   doctorId: string;
   firstName: string;
   lastName: string;
   medicalOrganization: string;
-  publicKeyPEM?: string;
 }
 
 @Component({
-    selector: 'app-doctor-search',
-    templateUrl: './doctor-search.component.html',
-    styleUrls: ['./doctor-search.component.scss'],
-    standalone: false
+  selector: 'app-doctor-search-modal',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './doctor-search-modal.component.html',
+  styleUrls: ['./doctor-search-modal.component.scss'],
 })
-export class DoctorSearchComponent implements OnInit {
+export class DoctorSearchModalComponent implements OnInit {
   searchTerm = '';
   loading = false;
   addingId: string | null = null;
@@ -27,85 +31,91 @@ export class DoctorSearchComponent implements OnInit {
   error: string | null = null;
   doctors: Doctor[] = [];
 
+  /** doctors already added by the patient */
+  private myDoctorIds = new Set<string>();
+
   private patientDoctorService = inject(PatientDoctorService);
   private auth = inject(AuthService);
   private userContext = inject(UserContextService);
   private addDoctorHelper = inject(AddDoctorHelper);
   private logger = inject(LoggingService);
+  private modalRef = inject(ModalRef);
 
   ngOnInit(): void {
-    this.loadAll();
+    this.init();
   }
 
-  async onSearch() {
+  isAlreadyAdded(doctorId: string): boolean {
+    return this.myDoctorIds.has(doctorId);
+  }
+
+  async onSearch(): Promise<void> {
     this.message = null;
     this.error = null;
     this.loading = true;
+
     const term = this.searchTerm.trim();
-    this.logger.debug('Searching doctors', { term: term || '(all)' }, 'DoctorSearchComponent');
+    this.logger.debug('Searching doctors', { term: term || '(all)' }, 'DoctorSearchModalComponent');
+
     try {
       const res = term
         ? await this.patientDoctorService.searchDoctors(term).toPromise()
         : await this.patientDoctorService.listAllDoctors().toPromise();
+
       this.doctors = (res?.doctors ?? []) as Doctor[];
-      this.logger.info('Doctor search returned results', { count: this.doctors.length }, 'DoctorSearchComponent');
     } catch (e: unknown) {
       this.error = 'Erreur pendant la recherche des médecins';
-      const msg = e instanceof Error ? e.message : String(e);
-      this.logger.error('Doctor search failed', e, { message: msg }, 'DoctorSearchComponent');
-      // replaced console.error with structured logging
+      this.logger.error('Doctor search failed', e, {}, 'DoctorSearchModalComponent');
     } finally {
       this.loading = false;
     }
   }
 
-  async addDoctor(doctor: Doctor) {
+  async addDoctor(doctor: Doctor): Promise<void> {
+    if (this.isAlreadyAdded(doctor.doctorId)) return;
+
     this.message = null;
     this.error = null;
     this.addingId = doctor.doctorId;
-    this.logger.debug('Adding doctor', { doctorId: doctor.doctorId }, 'DoctorSearchComponent');
+
     try {
       const keycloakId = this.auth.sub;
       const patientUserId = this.userContext.userId;
-      if (!patientUserId) {
-        throw new Error('Patient user ID not found');
-      }
+      if (!patientUserId) throw new Error('Patient user ID not found');
+
       await this.addDoctorHelper.addDoctorToPatient(doctor.doctorId, patientUserId, keycloakId);
-      this.message = `Médecin ajouté: ${doctor.firstName} ${doctor.lastName}`;
-      this.logger.logAction('DOCTOR_ADDED_VIA_SEARCH', '', {
-        doctorId: doctor.doctorId,
-        doctorName: `${doctor.firstName} ${doctor.lastName}`,
-        organization: doctor.medicalOrganization
-      });
+
+      // keep UI consistent even if modal stays open briefly
+      this.myDoctorIds.add(doctor.doctorId);
+
+      // close and notify parent to refresh list
+      this.modalRef.close({ added: true, doctorId: doctor.doctorId });
     } catch (e: unknown) {
-      const msg = this.extractMessage(e);
-      this.error = msg || 'Échec de l\'ajout du médecin';
-      this.logger.error('Failed to add doctor', e, { doctorId: doctor.doctorId, message: msg }, 'DoctorSearchComponent');
+      this.error = 'Échec de l\'ajout du médecin';
+      this.logger.error('Failed to add doctor', e, { doctorId: doctor.doctorId }, 'DoctorSearchModalComponent');
     } finally {
       this.addingId = null;
     }
   }
 
-  private async loadAll() {
+  private async init(): Promise<void> {
     this.loading = true;
     this.error = null;
+
     try {
+      // load my doctors first (for "already added" state)
+      const my = await this.patientDoctorService.getMyDoctors().toPromise();
+      const ids = my?.doctorIds ?? [];
+      this.myDoctorIds = new Set(ids);
+
+      // then load all
       const res = await this.patientDoctorService.listAllDoctors().toPromise();
       this.doctors = (res?.doctors ?? []) as Doctor[];
     } catch (e: unknown) {
       this.error = 'Impossible de charger la liste des médecins';
-      const msg = this.extractMessage(e);
-      this.logger.error('Failed to load doctors list', e, { message: msg }, 'DoctorSearchComponent');
+      this.doctors = [];
     } finally {
       this.loading = false;
     }
-  }
-
-  private extractMessage(err: unknown): string {
-    if (typeof err === 'object' && err !== null && 'message' in err) {
-      const m = (err as { message?: unknown }).message;
-      return typeof m === 'string' ? m : String(m);
-    }
-    return String(err);
   }
 }

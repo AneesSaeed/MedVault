@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Type } from '@angular/core';
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { LoggingService } from '../core/services/logging.service';
+import { DoctorSearchModalComponent } from '../doctor-search-modal/doctor-search-modal.component';
 
 type Doctor = {
   doctorId: string;
@@ -9,6 +10,8 @@ type Doctor = {
   medicalOrganization: string;
   email: string;
 };
+
+type AddDoctorModalResult = { added?: boolean; doctorId?: string } | undefined;
 
 @Component({
     selector: 'app-my-doctors',
@@ -24,6 +27,11 @@ export class MyDoctorsComponent implements OnInit {
 
   doctors: Doctor[] = [];
 
+  modalOpen = false;
+  modalTitle = 'Ajouter un médecin';
+  modalComponent: Type<any> = DoctorSearchModalComponent;
+  modalData: Record<string, unknown> = {};
+
   constructor(
     private service: PatientDoctorService,
     private logger: LoggingService
@@ -37,6 +45,7 @@ export class MyDoctorsComponent implements OnInit {
     this.loading = true;
     this.error = null;
     this.logger.debug('Loading my doctors list');
+
     try {
       // 1. Récupérer les IDs des médecins du patient
       const myDoctorsRes = await this.service.getMyDoctors().toPromise();
@@ -64,9 +73,7 @@ export class MyDoctorsComponent implements OnInit {
   }
 
   async removeDoctor(doctor: Doctor) {
-    if (!confirm(`Retirer ${doctor.firstName} ${doctor.lastName} de votre liste de médecins ?`)) {
-      return;
-    }
+    if (!confirm(`Retirer ${doctor.firstName} ${doctor.lastName} de votre liste de médecins ?`)) return;
 
     this.removingId = doctor.doctorId;
     this.message = null;
@@ -75,18 +82,31 @@ export class MyDoctorsComponent implements OnInit {
 
     try {
       await this.service.removeDoctorFromPatient(doctor.doctorId).toPromise();
+
       this.message = `Médecin retiré : ${doctor.firstName} ${doctor.lastName}`;
       this.logger.logAction('DOCTOR_REMOVED', '', {
         doctorId: doctor.doctorId,
         doctorName: `${doctor.firstName} ${doctor.lastName}`
       });
-      // Recharger la liste
+
       await this.loadMyDoctors();
     } catch (e: any) {
       this.error = e?.error?.error || 'Échec de la suppression du médecin';
       this.logger.error('Failed to remove doctor {}: {}', doctor.doctorId, e?.error?.error || e.message);
     } finally {
       this.removingId = null;
+    }
+  }
+
+  openAddDoctor(): void {
+    this.modalOpen = true;
+  }
+
+  onModalClosed(result?: AddDoctorModalResult): void {
+    this.modalOpen = false;
+    if (result?.added) {
+      this.message = 'Médecin ajouté.';
+      this.loadMyDoctors();
     }
   }
 }

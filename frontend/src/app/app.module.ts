@@ -20,7 +20,6 @@ import { HomeComponent } from './home/home.component';
 import { AppRoutingModule } from './app-routing.module';
 import { OnboardingComponent } from './onboarding/onboarding.component';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { DoctorSearchComponent } from './doctor-search/doctor-search.component';
 import { MyPatientsComponent } from './my-patients/my-patients.component';
 import { MyDoctorsComponent } from './my-doctors/my-doctors.component';
 import { PendingMedicalFilesComponent } from './pending-medical-files/pending-medical-files.component';
@@ -31,7 +30,6 @@ import { BaseModalComponent } from './shared/modal/base-modal/base-modal.compone
         HeaderComponent,
         HomeComponent,
         OnboardingComponent,
-        DoctorSearchComponent,
         MyPatientsComponent,
         MyDoctorsComponent,
         PendingMedicalFilesComponent,
