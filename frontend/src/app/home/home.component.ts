@@ -431,6 +431,11 @@ export class HomeComponent implements OnInit {
     })();
   }
 
+  clearNewSelection(): void {
+    this.selectedNewFile = null;
+  }
+
+  // HELPERS
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
     let binary = '';

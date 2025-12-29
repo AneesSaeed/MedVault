@@ -1,41 +1,85 @@
+@use '../../styles/variables' as *;
+
 .files-card {
-  margin-top: 16px;
+  margin: 16px 8px;
   padding: 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: $shadow-card;
 
   h2 {
-    margin: 0 0 12px;
+    margin: 0 0 6px 0;
     font-size: 18px;
     line-height: 1.2;
   }
 }
 
+.hint {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.muted { color: #666; }
+
+.error {
+  background: #fdecea;
+  color: #b71c1c;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin: 8px 0;
+  border: 1px solid rgba(183, 28, 28, .18);
+}
+
 .upload-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap; // prevents overflow on small screens
+  flex-wrap: wrap;
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid rgba(66, 140, 219, .18);
+  border-radius: 12px;
+  background: $color-primary-light;
+}
 
-  input[type="file"] {
-    max-width: 100%;
-  }
+/* hide native input if you switch to “Choose file” button */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
 
-  button {
-    margin-left: auto; // keeps Upload aligned to the right when space allows
-  }
+.chip {
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 999px;
+  background: #fff;
+  color: #444;
+  max-width: min(520px, 70vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-  .muted {
-    flex: 1 1 320px; // gives the helper text room while still wrapping nicely
-    min-width: 240px;
-  }
+/* table wrapper so it scrolls on small screens */
+.table-wrap {
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.08);
 }
 
 .files-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed; // improves truncation/wrapping behavior
+  font-size: 13px;
+  background: $color-primary-light;
+  min-width: 820px;
+  overflow: hidden;
 
   thead th {
     position: sticky;
@@ -44,95 +88,96 @@
     z-index: 1;
   }
 
-  th,
-  td {
-    border-bottom: 1px solid #eee;
+  th, td {
     padding: 10px;
+    border-bottom: 1px solid rgba(0,0,0,.06);
     text-align: left;
-    vertical-align: top;
+    vertical-align: middle;
   }
 
-  th {
-    font-weight: 600;
-  }
+  th { color: #666; font-weight: 600; }
 
-  tbody tr:hover {
-    background: #fafafa;
-  }
+  tbody tr { transition: background-color .08s ease; }
+  tbody tr:hover { background: $color-primary-soft; }
 
-  // Make long filenames behave nicely even without changing the template
   td:first-child {
-    word-break: break-word;
+    max-width: 420px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  // Keep action columns compact
   td:nth-child(4),
-  td:nth-child(5),
   td:nth-child(6) {
     white-space: nowrap;
   }
+}
+
+.actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .overwrite-cell {
   display: flex;
   gap: 8px;
   align-items: center;
-  flex-wrap: wrap; // file input + button won't overflow
+  flex-wrap: wrap;
+}
 
-  input[type="file"] {
-    max-width: 100%;
+.overwrite-cell .btn {
+  white-space: nowrap;
+}
+
+/* buttons */
+button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: #fff;
+  cursor: pointer;
+  transition: background-color .08s ease, border-color .08s ease, transform .08s ease;
+
+  &:hover:not(:disabled) { background: $color-hover; }
+  &:active:not(:disabled) { transform: translateY(0); }
+  &:disabled { opacity: .6; cursor: not-allowed; }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
   }
 }
 
-.error {
-  color: #b00020;
-  margin: 8px 0;
-  padding: 8px 10px;
-  border: 1px solid rgba(176, 0, 32, 0.35);
-  border-radius: 6px;
-  background: rgba(176, 0, 32, 0.05);
-}
+button.primary {
+  background: $color-primary;
+  color: $color-on-primary;
+  border-color: transparent;
 
-.muted {
-  color: #666;
-}
-
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
-  max-width: 360px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  &:hover:not(:disabled) { background: $color-primary-dark; }
 }
 
 button.danger {
-  border: 1px solid #b00020;
-  color: #b00020;
+  border-color: rgba(244, 67, 54, .35);
+  color: rgb(244, 67, 54);
+  background: rgba(244, 67, 54, .06);
+
+  &:hover:not(:disabled) { background: rgba(244, 67, 54, .10); }
 }
 
-button {
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #ddd;
-  background: #fff;
-  cursor: pointer;
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  &:focus-visible {
-    outline: 2px solid rgba(0, 0, 0, 0.35);
-    outline-offset: 2px;
-  }
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-input[type="file"] {
-  font-size: 14px;
+.spacer {
+  flex: 1 1 auto;
+}
 
-  &:focus-visible {
-    outline: 2px solid rgba(0, 0, 0, 0.35);
-    outline-offset: 2px;
-  }
+.empty {
+  padding: 10px 0;
 }
