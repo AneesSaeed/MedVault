@@ -17,8 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import be.he2b.healthsec.medical_records.dto.CreateDoctorDTO;
 import be.he2b.healthsec.medical_records.dto.CreatePatientDTO;
+import be.he2b.healthsec.medical_records.dto.MeResponseDTO;
 import be.he2b.healthsec.medical_records.dto.PatientDataDTO;
 import be.he2b.healthsec.medical_records.logging.LoggingService;
+import be.he2b.healthsec.medical_records.model.Doctor;
+import be.he2b.healthsec.medical_records.model.Patient;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.UserService;
@@ -57,24 +60,17 @@ public class UserController {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/user/me", keycloakId);
 
-        Optional<User> userOpt = userService.findByKeycloakId(keycloakId);
-        if (userOpt.isEmpty()) {
+        String role = JwtRoles.effectiveRole(jwt);
+
+        MeResponseDTO me = userService.getMe(keycloakId, role);
+        if (me == null) {
             logger.debug("User not found in database", Map.of("keycloakId", keycloakId));
             return ResponseEntity.notFound().build();
         }
 
-        User user = userOpt.get();
-        String role = JwtRoles.effectiveRole(jwt);
-
-        logger.info("User info retrieved", Map.of(
-                "userId", user.getId().toString(),
-                "role", String.valueOf(role)
-        ));
-
-        return ResponseEntity.ok(Map.of(
-            "userId", userOpt.get().getId().toString()
-        ));
+        return ResponseEntity.ok(me);
     }
+
 
     // --------------------------------------------------------------
     //  Create Patient (first-time onboarding)

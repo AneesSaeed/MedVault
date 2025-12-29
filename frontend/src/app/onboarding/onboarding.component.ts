@@ -16,6 +16,10 @@ export class OnboardingComponent implements OnInit {
 
   role: AppRole | null = null;
 
+  // collected in onboarding (DB-owned)
+  firstName = '';
+  lastName = '';
+
   dateOfBirth = '';
   medicalOrg = '';
   isSubmitting = false;
@@ -30,48 +34,49 @@ export class OnboardingComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Role comes from Keycloak realm roles in the JWT
     this.role = this.auth.userRole;
   }
 
   async submit() {
     if (!this.role || this.isSubmitting) return;
+    if (!this.isFormValid()) return;
+
+    const emailFromToken = (this.auth.email ?? '').trim();
+    if (!emailFromToken) {
+      // email is required from JWT per your design
+      this.logger.error('Missing email in token', null, {}, 'OnboardingComponent');
+      return;
+    }
+
     this.isSubmitting = true;
 
     const keycloakId = this.auth.sub;
+    const firstName = this.firstName.trim();
+    const lastName = this.lastName.trim();
+
     this.logger.info(`Starting onboarding for ${this.role}`, { role: this.role }, 'OnboardingComponent');
 
     try {
-      // 1) Generate RSA keypair for all users
-      this.logger.debug('Generating RSA key pair...', { keySize: 2048 }, 'OnboardingComponent');
+      // 1) Generate RSA keypair
       const { publicKey, privateKey } = await this.cryptoService.generateRSAKeyPair();
-      this.logger.info('RSA key pair generated successfully', {}, 'OnboardingComponent');
 
-      // Store private/public key (CryptoKey) in IndexedDB
       await this.keyStore.putRsaPrivateKey(keycloakId, privateKey);
       await this.keyStore.putRsaPublicKey(keycloakId, publicKey);
-      this.logger.debug('Keys stored in IndexedDB', { keycloakId }, 'OnboardingComponent');
 
-      // Export public key PEM for backend
       const publicKeyPEM = await this.cryptoService.exportPublicKey(publicKey);
 
       if (this.role === 'PATIENT') {
-        // PATIENT: generate AES key, encrypt all personal data, wrap AES key with RSA
-        this.logger.debug('Generating AES key for patient data...', {}, 'OnboardingComponent');
         const aesKey = await this.cryptoService.generateAESKey();
 
-        this.logger.debug('Encrypting patient personal data...', { fieldsCount: 4 }, 'OnboardingComponent');
         const [firstNameEnc, lastNameEnc, emailEnc, dobEnc] = await Promise.all([
-          this.cryptoService.encryptWithAES(this.auth.firstName ?? '', aesKey),
-          this.cryptoService.encryptWithAES(this.auth.lastName ?? '', aesKey),
-          this.cryptoService.encryptWithAES(this.auth.email ?? '', aesKey),
+          this.cryptoService.encryptWithAES(firstName, aesKey),
+          this.cryptoService.encryptWithAES(lastName, aesKey),
+          this.cryptoService.encryptWithAES(emailFromToken, aesKey),
           this.cryptoService.encryptWithAES(this.dateOfBirth, aesKey)
         ]);
 
         const symmetricKeyEnc = await this.cryptoService.encryptAESKeyWithRSA(aesKey, publicKey);
-        this.logger.info('Patient data encrypted successfully', { hasAESKey: true }, 'OnboardingComponent');
 
-        // Concat IV + cipher into one Base64 blob for backend
         const concatEncrypted = (iv: string, encrypted: string): string => {
           const ivBuf = this.base64ToArrayBuffer(iv);
           const encBuf = this.base64ToArrayBuffer(encrypted);
@@ -90,17 +95,10 @@ export class OnboardingComponent implements OnInit {
           symmetricKeyEncBase64: symmetricKeyEnc
         };
 
-        this.logger.info('Sending patient creation request to backend...', {}, 'OnboardingComponent');
         this.userService.createPatient(payload).subscribe({
           next: async () => {
             try {
-              // refresh token to get realm role assigned during onboarding
               await this.auth.refreshToken();
-
-              this.logger.logAction('PATIENT_ONBOARDING_SUCCESS', keycloakId, {
-                dateOfBirth: this.dateOfBirth,
-                timestamp: Date.now()
-              }, 'OnboardingComponent');
             } finally {
               this.router.navigate(['/']);
             }
@@ -109,7 +107,6 @@ export class OnboardingComponent implements OnInit {
             this.logger.error('Failed to create patient', err, {
               errorMessage: err?.error?.error || err?.message
             }, 'OnboardingComponent');
-            console.error('Erreur lors de la création du patient:', err);
             this.isSubmitting = false;
           }
         });
@@ -119,28 +116,17 @@ export class OnboardingComponent implements OnInit {
 
       // DOCTOR: cleartext profile (discoverable)
       const payload = {
-        firstName: this.auth.firstName ?? '',
-        lastName: this.auth.lastName ?? '',
-        email: this.auth.email ?? '',
-        medicalOrganization: this.medicalOrg,
+        firstName,
+        lastName,
+        email: emailFromToken,
+        medicalOrganization: this.medicalOrg.trim(),
         publicKeyPEM
       };
-
-      this.logger.info('Sending doctor creation request to backend...', {
-        organization: this.medicalOrg
-      }, 'OnboardingComponent');
 
       this.userService.createDoctor(payload).subscribe({
         next: async () => {
           try {
-            // refresh token to get realm role assigned during onboarding
             await this.auth.refreshToken();
-
-            this.logger.logAction('DOCTOR_ONBOARDING_SUCCESS', keycloakId, {
-              organization: this.medicalOrg,
-              email: this.auth.email,
-              timestamp: Date.now()
-            }, 'OnboardingComponent');
           } finally {
             this.router.navigate(['/']);
           }
@@ -150,7 +136,6 @@ export class OnboardingComponent implements OnInit {
             organization: this.medicalOrg,
             errorMessage: err?.error?.error || err?.message
           }, 'OnboardingComponent');
-          console.error('Erreur lors de la création du médecin:', err);
           this.isSubmitting = false;
         }
       });
@@ -160,7 +145,6 @@ export class OnboardingComponent implements OnInit {
         role: this.role,
         keycloakId
       }, 'OnboardingComponent');
-      console.error('Erreur lors de la génération des clés:', error);
       this.isSubmitting = false;
     }
   }
@@ -168,30 +152,26 @@ export class OnboardingComponent implements OnInit {
   isFormValid(): boolean {
     if (!this.role) return false;
 
-    if (this.role === 'PATIENT') {
-      return !!this.dateOfBirth;
-    }
+    const firstNameOk = this.firstName.trim().length > 0;
+    const lastNameOk = this.lastName.trim().length > 0;
+    const emailOk = !!(this.auth.email && this.auth.email.trim().length > 0);
+    if (!firstNameOk || !lastNameOk || !emailOk) return false;
 
-    // DOCTOR
-    return !!this.medicalOrg && this.medicalOrg.trim().length > 0;
+    if (this.role === 'PATIENT') return !!this.dateOfBirth;
+    return this.medicalOrg.trim().length > 0;
   }
 
-  // Helpers for IV+encrypted concatenation
   private base64ToArrayBuffer(base64: string): ArrayBuffer {
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     return bytes.buffer;
   }
 
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
     let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
     return btoa(binary);
   }
 }

@@ -6,12 +6,12 @@
   <div class="identity-grid">
     <div class="field">
       <label>First name</label>
-      <input type="text" [value]="auth.firstName" disabled>
+      <input type="text" [(ngModel)]="firstName" name="firstName" autocomplete="given-name">
     </div>
 
     <div class="field">
       <label>Last name</label>
-      <input type="text" [value]="auth.lastName" disabled>
+      <input type="text" [(ngModel)]="lastName" name="lastName" autocomplete="family-name">
     </div>
 
     <div class="field">
@@ -37,7 +37,7 @@
   <div *ngIf="role" class="extra-form">
     <ng-container *ngIf="role === 'PATIENT'">
       <label>Date of birth</label>
-      <input type="date" [(ngModel)]="dateOfBirth">
+      <input type="date" [(ngModel)]="dateOfBirth" name="dateOfBirth">
     </ng-container>
 
     <ng-container *ngIf="role === 'DOCTOR'">
@@ -45,6 +45,7 @@
       <input
         type="text"
         [(ngModel)]="medicalOrg"
+        name="medicalOrg"
         placeholder="Hospital, Clinic...">
     </ng-container>
 

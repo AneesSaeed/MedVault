@@ -25,7 +25,7 @@ export class CryptoService {
   async generateRSAKeyPair(): Promise<{ publicKey: CryptoKey; privateKey: CryptoKey }> {
     this.logger.debug('Generating RSA-2048 key pair...', { algorithm: 'RSA-OAEP', keySize: 2048 }, 'CryptoService');
     const startTime = performance.now();
-    
+
     try {
       const keyPair = await window.crypto.subtle.generateKey(
         {
@@ -63,7 +63,7 @@ export class CryptoService {
    */
   async generateAESKey(): Promise<CryptoKey> {
     this.logger.debug('Generating AES-256 symmetric key...', { algorithm: 'AES-GCM', keyLength: 256 }, 'CryptoService');
-    
+
     try {
       const key = await window.crypto.subtle.generateKey(
         {
@@ -103,12 +103,12 @@ export class CryptoService {
    */
   async exportPublicKey(publicKey: CryptoKey): Promise<string> {
     this.logger.debug('Exporting RSA public key to PEM format...', {}, 'CryptoService');
-    
+
     try {
       const exported = await window.crypto.subtle.exportKey('spki', publicKey);
       const exportedAsBase64 = this.arrayBufferToBase64(exported);
       const pem = `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64}\n-----END PUBLIC KEY-----`;
-      
+
       this.logger.info('RSA public key exported successfully', { format: 'PEM', size: pem.length }, 'CryptoService');
       return pem;
     } catch (error) {
@@ -124,7 +124,7 @@ export class CryptoService {
    */
   async importPublicKey(pem: string): Promise<CryptoKey> {
     this.logger.debug('Importing RSA public key from PEM format...', { pemLength: pem.length }, 'CryptoService');
-    
+
     try {
       const pemHeader = '-----BEGIN PUBLIC KEY-----';
       const pemFooter = '-----END PUBLIC KEY-----';

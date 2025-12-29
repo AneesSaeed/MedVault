@@ -3,6 +3,7 @@ package be.he2b.healthsec.medical_records.service;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
@@ -11,6 +12,7 @@ import be.he2b.healthsec.medical_records.model.Patient;
 import be.he2b.healthsec.medical_records.model.PatientSymmetricKey;
 import be.he2b.healthsec.medical_records.model.PatientSymmetricKeyId;
 import be.he2b.healthsec.medical_records.model.User;
+import be.he2b.healthsec.medical_records.dto.MeResponseDTO;
 import be.he2b.healthsec.medical_records.dto.PatientDataDTO;
 import be.he2b.healthsec.medical_records.logging.LoggingService;
 import be.he2b.healthsec.medical_records.repository.DoctorRepository;
@@ -45,6 +47,45 @@ public class UserService {
             "found", user.isPresent()
         ));
         return user;
+    }
+
+    public MeResponseDTO getMe(String keycloakId, String role) {
+        Optional<User> userOpt = userRepository.findByKeycloakId(keycloakId);
+        if (userOpt.isEmpty()) return null;
+
+        User user = userOpt.get();
+        UUID userId = user.getId();
+
+        MeResponseDTO.MeResponseDTOBuilder b = MeResponseDTO.builder()
+            .userId(userId.toString());
+
+        if ("DOCTOR".equals(role)) {
+            doctorRepository.findById(userId).ifPresent(d -> b
+                .firstName(d.getFirstName())
+                .lastName(d.getLastName())
+            );
+            return b.build();
+        }
+
+        if ("PATIENT".equals(role)) {
+            patientRepository.findById(userId).ifPresent(p -> b
+                .firstNameEncBase64(Base64.getEncoder().encodeToString(p.getFirstNameEnc()))
+                .lastNameEncBase64(Base64.getEncoder().encodeToString(p.getLastNameEnc()))
+            );
+
+            // IMPORTANT: patient needs his own wrapped AES key to decrypt
+            PatientSymmetricKey keyRow =
+                patientSymmetricKeyRepository.findByPatientAndRecipient(userId, userId);
+
+            if (keyRow != null) {
+                b.symmetricKeyEncBase64(Base64.getEncoder().encodeToString(keyRow.getWrappedSymmetricKeyEnc()));
+            }
+
+            return b.build();
+        }
+
+        // Unknown role -> just return userId
+        return b.build();
     }
 
     @Transactional
