@@ -3,7 +3,7 @@
     <div class="name">{{ data.firstName }} {{ data.lastName }}</div>
     <div class="meta">
       <span>{{ data.email }}</span>
-      <span *ngIf="data.dob">• {{ data.dob }}</span>
+      <span *ngIf="data.dob"> | {{ data.dob }}</span>
     </div>
   </div>
 </div>
@@ -41,28 +41,69 @@
 </section>
 
 <section class="section propose">
-  <h4>Proposer un fichier médical</h4>
+  <div class="section-head">
+    <h4>Proposer un fichier médical</h4>
+    <p class="hint">Envoyez un fichier medical. Une demande sera transmise au patient.</p>
+  </div>
 
   <div *ngIf="uploadError" class="msg error">{{ uploadError }}</div>
   <div *ngIf="uploadSuccess" class="msg success">{{ uploadSuccess }}</div>
 
-  <div class="upload-row">
+  <div class="upload-card">
+    <!-- Hidden native input -->
     <input
       #fileInput
+      class="file-input"
       type="file"
       (change)="onFileSelected($event)"
       [disabled]="uploadLoading"
     />
-    <span *ngIf="selectedFile" class="chip">{{ selectedFile.name }}</span>
-  </div>
 
-  <div class="actions">
-    <button class="btn success" (click)="uploadRequest()" [disabled]="!selectedFile || uploadLoading">
-      {{ uploadLoading ? 'Envoi…' : 'Envoyer la demande' }}
-    </button>
+    <div class="upload-row">
+      <button
+        type="button"
+        class="btn outline"
+        (click)="fileInput.click()"
+        [disabled]="uploadLoading"
+      >
+        Choisir un fichier
+      </button>
 
-    <button class="btn danger" (click)="clearFileSelection()" [disabled]="!selectedFile || uploadLoading">
-      Annuler
-    </button>
+      <div class="file-preview" *ngIf="selectedFile; else noFile">
+        <span class="chip" [title]="selectedFile.name">{{ selectedFile.name }}</span>
+        <button
+          type="button"
+          class="link danger"
+          (click)="clearFileSelection()"
+          [disabled]="uploadLoading"
+        >
+          Retirer
+        </button>
+      </div>
+
+      <ng-template #noFile>
+        <span class="muted">Aucun fichier sélectionné</span>
+      </ng-template>
+    </div>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="btn success"
+        (click)="uploadRequest()"
+        [disabled]="!selectedFile || uploadLoading"
+      >
+        {{ uploadLoading ? 'Envoi…' : 'Envoyer la demande' }}
+      </button>
+
+      <button
+        type="button"
+        class="btn ghost"
+        (click)="clearFileSelection()"
+        [disabled]="!selectedFile || uploadLoading"
+      >
+        Annuler
+      </button>
+    </div>
   </div>
 </section>
