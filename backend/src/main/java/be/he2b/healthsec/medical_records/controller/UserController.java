@@ -24,8 +24,6 @@ import be.he2b.healthsec.medical_records.dto.CreatePatientDTO;
 import be.he2b.healthsec.medical_records.dto.MeResponseDTO;
 import be.he2b.healthsec.medical_records.dto.PatientDataDTO;
 import be.he2b.healthsec.medical_records.logging.LoggingService;
-import be.he2b.healthsec.medical_records.model.Doctor;
-import be.he2b.healthsec.medical_records.model.Patient;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.UserService;

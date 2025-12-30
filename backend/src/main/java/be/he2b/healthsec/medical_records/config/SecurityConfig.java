@@ -2,10 +2,7 @@ package be.he2b.healthsec.medical_records.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+// ...existing code...
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.context.annotation.Bean;
@@ -50,7 +47,7 @@ public class SecurityConfig {
 
                 .anyRequest().authenticated()
             )
-            .addFilterAfter(rateLimitingFilter, AuthorizationFilter.class);
+            .addFilterAfter(rateLimitingFilter, AuthorizationFilter.class)
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter()))
             );
