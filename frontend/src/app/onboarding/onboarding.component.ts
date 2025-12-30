@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService, AppRole } from '../core/services/auth.service';
 import { UserService } from '../core/services/user.service';
@@ -6,14 +6,16 @@ import { CryptoService } from '../core/services/crypto.service';
 import { KeyStoreService } from '../core/services/key-store.service';
 import { LoggingService } from '../core/services/logging.service';
 
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-onboarding',
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, FormsModule]
 })
 export class OnboardingComponent implements OnInit {
-
   role: AppRole | null = null;
 
   // collected in onboarding (DB-owned)
@@ -24,14 +26,12 @@ export class OnboardingComponent implements OnInit {
   medicalOrg = '';
   isSubmitting = false;
 
-  constructor(
-    public auth: AuthService,
-    private userService: UserService,
-    private router: Router,
-    private cryptoService: CryptoService,
-    private keyStore: KeyStoreService,
-    private logger: LoggingService,
-  ) {}
+  public auth = inject(AuthService);
+  private userService = inject(UserService);
+  private router = inject(Router);
+  private cryptoService = inject(CryptoService);
+  private keyStore = inject(KeyStoreService);
+  private logger = inject(LoggingService);
 
   ngOnInit(): void {
     this.role = this.auth.userRole;
@@ -103,9 +103,18 @@ export class OnboardingComponent implements OnInit {
               this.router.navigate(['/']);
             }
           },
-          error: (err) => {
+          error: (err: unknown) => {
+            let errorMessage = 'Erreur inconnue';
+            if (typeof err === 'object' && err !== null) {
+              const errObj = err as { error?: { error?: string }; message?: string };
+              if (errObj.error?.error) {
+                errorMessage = errObj.error.error;
+              } else if (errObj.message) {
+                errorMessage = errObj.message;
+              }
+            }
             this.logger.error('Failed to create patient', err, {
-              errorMessage: err?.error?.error || err?.message
+              errorMessage,
             }, 'OnboardingComponent');
             this.isSubmitting = false;
           }
@@ -131,10 +140,19 @@ export class OnboardingComponent implements OnInit {
             this.router.navigate(['/']);
           }
         },
-        error: (err) => {
+        error: (err: unknown) => {
+          let errorMessage = 'Erreur inconnue';
+          if (typeof err === 'object' && err !== null) {
+            const errObj = err as { error?: { error?: string }; message?: string };
+            if (errObj.error?.error) {
+              errorMessage = errObj.error.error;
+            } else if (errObj.message) {
+              errorMessage = errObj.message;
+            }
+          }
           this.logger.error('Failed to create doctor', err, {
             organization: this.medicalOrg,
-            errorMessage: err?.error?.error || err?.message
+            errorMessage,
           }, 'OnboardingComponent');
           this.isSubmitting = false;
         }

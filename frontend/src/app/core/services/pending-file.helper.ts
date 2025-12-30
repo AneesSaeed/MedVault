@@ -274,7 +274,9 @@ export class PendingFileHelper {
       // 7. Rechiffrer le contenu avec K_file
       const encFile = await this.crypto.encryptBytesWithAES(decryptedContent, fileKey);
       const packedContent = this.crypto.packIvAndCiphertext(encFile.iv, encFile.encrypted);
-      const blob = new Blob([new Uint8Array(packedContent)], { type: pendingFile.mimeType || 'application/octet-stream' });
+      // IMPORTANT: Utiliser 'application/octet-stream' car le fichier est chiffré
+      // Le backend ne peut pas valider les magic bytes sur un fichier chiffré
+      const blob = new Blob([new Uint8Array(packedContent)], { type: 'application/octet-stream' });
 
       // 8. Wrapper K_file avec la clé publique RSA du patient
       const patientPublicKey = await this.keyStore.getRsaPublicKey(keycloakId);

@@ -1,0 +1,25 @@
+{
+  "properties": [
+    {
+      "name": "keycloak.admin.base-url",
+      "type": "java.lang.String",
+      "description": "Base URL for Keycloak Admin API (e.g., https://keycloak:8443/auth)"
+    },
+    {
+      "name": "keycloak.admin.realm",
+      "type": "java.lang.String",
+      "description": "Keycloak realm name (e.g., health-realm)"
+    },
+    {
+      "name": "keycloak.admin.client-id",
+      "type": "java.lang.String",
+      "description": "Keycloak client ID for admin operations (e.g., backend-client)"
+    },
+    {
+      "name": "keycloak.admin.client-secret",
+      "type": "java.lang.String",
+      "description": "Keycloak client secret for admin operations"
+    }
+  ]
+}
+

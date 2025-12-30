@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { LoggingService } from './logging.service';
 import { CryptoService } from './crypto.service';
 import { KeyStoreService } from './key-store.service';
@@ -15,12 +15,10 @@ import { PatientData } from '../models/patient-data.model';
  */
 @Injectable({ providedIn: 'root' })
 export class PatientDataService {
-  constructor(
-    private patientDataApi: PatientDataApi,
-    private crypto: CryptoService,
-    private keyStore: KeyStoreService,
-    private logger: LoggingService
-  ) {}
+  private readonly patientDataApi = inject(PatientDataApi);
+  private readonly crypto = inject(CryptoService);
+  private readonly keyStore = inject(KeyStoreService);
+  private readonly logger = inject(LoggingService);
 
   /**
    * Récupère et déchiffre les données d'un patient.

@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ElementRef, Inject } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { MODAL_DATA } from 'src/app/shared/modal/base-modal/modal.tokens';
@@ -10,26 +10,26 @@ import { MedicalFilesApi } from '../core/api/medical-files.api';
 import { FileUploadHelper } from '../core/services/file-upload.helper';
 import { LoggingService } from '../core/services/logging.service';
 
-type ApiMedicalFile = {
+interface ApiMedicalFile {
   id: string;
   fileNameEncBase64: string;
   uploadDateEncBase64: string;
   sizeBytes: number;
   wrappedFileKeyEncBase64: string; // wrapped for doctor
-};
+}
 
-type MedicalFileVM = ApiMedicalFile & {
+interface MedicalFileVM extends ApiMedicalFile {
   fileName: string;
   uploadDateIso: string;
-};
+}
 
-export type PatientRecordModalData = {
+export interface PatientRecordModalData {
   patientId: string;
   firstName: string;
   lastName: string;
   email: string;
   dob?: string;
-};
+}
 
 @Component({
   selector: 'app-patient-record-modal',
@@ -39,6 +39,14 @@ export type PatientRecordModalData = {
   styleUrls: ['./patient-record-modal.component.scss'],
 })
 export class PatientRecordModalComponent implements OnInit {
+  public readonly data = inject(MODAL_DATA) as PatientRecordModalData;
+  private readonly crypto = inject(CryptoService);
+  private readonly auth = inject(AuthService);
+  private readonly medicalFilesApi = inject(MedicalFilesApi);
+  private readonly keyStore = inject(KeyStoreService);
+  private readonly fileUploadHelper = inject(FileUploadHelper);
+  private readonly logger = inject(LoggingService);
+
   filesLoading = false;
   filesError: string | null = null;
   patientFiles: MedicalFileVM[] = [];
@@ -49,16 +57,6 @@ export class PatientRecordModalComponent implements OnInit {
   selectedFile: File | null = null;
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
-
-  constructor(
-    @Inject(MODAL_DATA) public data: PatientRecordModalData,
-    private crypto: CryptoService,
-    private auth: AuthService,
-    private medicalFilesApi: MedicalFilesApi,
-    private keyStore: KeyStoreService,
-    private fileUploadHelper: FileUploadHelper,
-    private logger: LoggingService
-  ) {}
 
   async ngOnInit(): Promise<void> {
     await this.loadPatientFiles();
@@ -107,9 +105,10 @@ export class PatientRecordModalComponent implements OnInit {
         patientId: this.data.patientId,
         filesCount: this.patientFiles.length
       });
-    } catch (e: any) {
-      this.filesError = e?.message || 'Impossible de charger les fichiers';
-      this.logger.error('Failed to load files for patient {}: {}', this.data.patientId, e?.message || e);
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      this.filesError = error?.message || 'Impossible de charger les fichiers';
+      this.logger.error('Failed to load files for patient', e, { patientId: this.data.patientId });
     } finally {
       this.filesLoading = false;
     }
@@ -152,9 +151,10 @@ export class PatientRecordModalComponent implements OnInit {
               a.click();
 
               URL.revokeObjectURL(url);
-            } catch (e: any) {
-              this.filesError = e?.message || 'Échec du déchiffrement du fichier';
-              this.logger.error('Decrypt file failed {}: {}', file.id, e?.message || e);
+            } catch (e: unknown) {
+              const error = e as { message?: string };
+              this.filesError = error?.message || 'Échec du déchiffrement du fichier';
+              this.logger.error('Decrypt file failed', e, { fileId: file.id });
             } finally {
               this.filesLoading = false;
             }
@@ -165,8 +165,9 @@ export class PatientRecordModalComponent implements OnInit {
             this.filesLoading = false;
           }
         });
-      } catch (e: any) {
-        this.filesError = e?.message || 'Téléchargement impossible';
+      } catch (e: unknown) {
+        const error = e as { message?: string };
+        this.filesError = error?.message || 'Téléchargement impossible';
         this.filesLoading = false;
       }
     })();
@@ -201,9 +202,10 @@ export class PatientRecordModalComponent implements OnInit {
 
       // Optional: refresh list if your backend makes it visible immediately
       // await this.loadPatientFiles();
-    } catch (e: any) {
-      this.uploadError = e?.message || 'Erreur lors de l\'upload';
-      this.logger.error('Upload request error: {}', e?.message || e);
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      this.uploadError = error?.message || 'Erreur lors de l\'upload';
+      this.logger.error('Upload request error: {}', error?.message || e);
     } finally {
       this.uploadLoading = false;
     }

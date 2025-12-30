@@ -3,33 +3,43 @@
     <h2>Mes patients</h2>
   </div>
 
-  <div *ngIf="loading" class="muted">Chargement…</div>
-  <div *ngIf="error" class="msg error">{{ error }}</div>
+  @if (loading) {
+    <div class="muted">Chargement…</div>
+  }
+  @if (error) {
+    <div class="msg error">{{ error }}</div>
+  }
 
-  <div class="folders" *ngIf="!loading && !error && patients.length">
-    <button
-      type="button"
-      class="folder"
-      *ngFor="let p of patients"
-      (click)="openPatient(p)"
-    >
-      <div class="icon" aria-hidden="true"></div>
-      <div class="text">
-        <div class="name">{{ p.firstName }} {{ p.lastName }}</div>
-        <div class="meta">{{ p.email }}</div>
-      </div>
-    </button>
-  </div>
+  @if (!loading && !error && patients.length) {
+    <div class="folders">
+      @for (p of patients; track p.patientId) {
+        <button
+          type="button"
+          class="folder"
+          (click)="openPatient(p)"
+        >
+          <div class="icon" aria-hidden="true"></div>
+          <div class="text">
+            <div class="name">{{ p.firstName }} {{ p.lastName }}</div>
+            <div class="meta">{{ p.email }}</div>
+          </div>
+        </button>
+      }
+    </div>
+  }
 
-  <div *ngIf="!loading && !error && !patients.length" class="empty">
-    Aucun patient à afficher.
-  </div>
+  @if (!loading && !error && !patients.length) {
+    <div class="empty">
+      Aucun patient à afficher.
+    </div>
+  }
 </div>
 
-<app-base-modal
-  *ngIf="modalOpen"
-  [title]="modalTitle"
-  [component]="modalComponent"
-  [data]="modalData"
-  (closed)="onModalClosed()"
-></app-base-modal>
+@if (modalOpen) {
+  <app-base-modal
+    [title]="modalTitle"
+    [component]="modalComponent"
+    [data]="modalData"
+    (closed)="onModalClosed()"
+  ></app-base-modal>
+}

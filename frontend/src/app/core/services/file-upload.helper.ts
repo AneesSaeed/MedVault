@@ -26,7 +26,7 @@ export class FileUploadHelper {
 
   private extractErrorMessage(error: unknown): string {
     if (error && typeof error === 'object') {
-      const errObj = error as any;
+      const errObj = error as { error?: { error?: string; message?: string }; message?: string; status?: number; statusText?: string };
       if (errObj.error?.error) return String(errObj.error.error);
       if (errObj.error?.message) return String(errObj.error.message);
       if (errObj.message) return String(errObj.message);

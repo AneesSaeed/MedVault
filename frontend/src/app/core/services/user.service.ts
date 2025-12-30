@@ -3,7 +3,7 @@ import { Injectable, inject } from "@angular/core";
 import { environment } from "../../../environments/environment";
 import { LoggingService } from './logging.service';
 
-export type MeResponse = {
+export interface MeResponse {
   userId: string;
 
   // doctor cleartext
@@ -16,7 +16,7 @@ export type MeResponse = {
 
   // patient wrapped AES key (base64)
   symmetricKeyEncBase64: string | null;
-};
+}
 
 @Injectable({
   providedIn: 'root'

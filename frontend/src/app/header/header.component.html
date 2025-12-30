@@ -9,20 +9,22 @@
 
 <div class="user-info-bar">
   <span class="user-info-bar__item"><strong>Email:</strong> {{ email }}</span>
-  <span
-    class="user-info-bar__item"
-    *ngIf="firstName && lastName; else fallbackUser"
-  >
-   <strong>Name:</strong> {{ firstName }} {{ lastName }}
-  </span>
-  <ng-template #fallbackUser>
-    {{ username }}
-  </ng-template>
+  @if (firstName && lastName) {
+    <span class="user-info-bar__item">
+     <strong>Name:</strong> {{ firstName }} {{ lastName }}
+    </span>
+  } @else {
+    <span class="user-info-bar__item">{{ username }}</span>
+  }
   <span class="user-info-bar__item"><strong>Role:</strong> {{ role }}</span>
 </div>
 
 <nav class="nav">
   <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
-  <a *ngIf="role==='PATIENT'" routerLink="/my-doctors" routerLinkActive="active">Mes médecins</a>
-  <a *ngIf="role==='PATIENT'" routerLink="/pending-files" routerLinkActive="active">Fichiers en attente</a>
+  @if (role==='PATIENT') {
+    <a routerLink="/my-doctors" routerLinkActive="active">Mes médecins</a>
+  }
+  @if (role==='PATIENT') {
+    <a routerLink="/pending-files" routerLinkActive="active">Fichiers en attente</a>
+  }
 </nav>

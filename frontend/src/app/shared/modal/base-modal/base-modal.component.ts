@@ -8,7 +8,8 @@ import {
   OnChanges,
   Output,
   SimpleChanges,
-  Type
+  Type,
+  inject
 } from '@angular/core';
 import { MODAL_DATA } from 'src/app/shared/modal/base-modal/modal.tokens';
 import { ModalRef } from './modal-ref';
@@ -22,15 +23,14 @@ import { ModalRef } from './modal-ref';
 })
 export class BaseModalComponent implements OnChanges {
   @Input() title = '';
-  @Input() component!: Type<any>;
-  @Input() data: any;
+  @Input() component!: Type<unknown>;
+  @Input() data: unknown;
 
-  @Output() closed = new EventEmitter<any>();
+  @Output() closed = new EventEmitter<unknown>();
 
   childInjector!: Injector;
   private modalRef!: ModalRef;
-
-  constructor(private injector: Injector) {}
+  private readonly injector = inject(Injector);
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['component'] || changes['data']) {

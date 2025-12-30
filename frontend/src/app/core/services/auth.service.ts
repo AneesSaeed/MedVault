@@ -1,16 +1,24 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { KeycloakService } from 'keycloak-angular';
 
 export type AppRole = 'PATIENT' | 'DOCTOR';
+
+interface KeycloakToken {
+  sub?: string;
+  preferred_username?: string;
+  email?: string;
+  realm_access?: { roles?: string[] };
+  selected_role?: string;
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  constructor(private keycloak: KeycloakService) {}
+  private readonly keycloak = inject(KeycloakService);
 
-  private get token(): any {
-    return this.keycloak.getKeycloakInstance().tokenParsed ?? {};
+  private get token(): KeycloakToken {
+    return (this.keycloak.getKeycloakInstance().tokenParsed as KeycloakToken) ?? {};
   }
 
   get sub(): string {

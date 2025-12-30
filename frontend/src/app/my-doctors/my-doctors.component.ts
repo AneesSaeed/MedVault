@@ -1,23 +1,26 @@
-import { Component, OnInit, Type } from '@angular/core';
+import { Component, OnInit, Type, inject } from '@angular/core';
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { LoggingService } from '../core/services/logging.service';
 import { DoctorSearchModalComponent } from '../doctor-search-modal/doctor-search-modal.component';
+import { BaseModalComponent } from '../shared/modal/base-modal/base-modal.component';
 
-type Doctor = {
+interface Doctor {
   doctorId: string;
   firstName: string;
   lastName: string;
   medicalOrganization: string;
   email: string;
-};
+}
 
 type AddDoctorModalResult = { added?: boolean; doctorId?: string } | undefined;
 
+import { CommonModule } from '@angular/common';
 @Component({
-    selector: 'app-my-doctors',
-    templateUrl: './my-doctors.component.html',
-    styleUrls: ['./my-doctors.component.scss'],
-    standalone: false
+  selector: 'app-my-doctors',
+  templateUrl: './my-doctors.component.html',
+  styleUrls: ['./my-doctors.component.scss'],
+  standalone: true,
+  imports: [CommonModule, BaseModalComponent]
 })
 export class MyDoctorsComponent implements OnInit {
   loading = false;
@@ -29,13 +32,11 @@ export class MyDoctorsComponent implements OnInit {
 
   modalOpen = false;
   modalTitle = 'Ajouter un médecin';
-  modalComponent: Type<any> = DoctorSearchModalComponent;
+  modalComponent: Type<unknown> = DoctorSearchModalComponent;
   modalData: Record<string, unknown> = {};
 
-  constructor(
-    private service: PatientDoctorService,
-    private logger: LoggingService
-  ) {}
+  private readonly service = inject(PatientDoctorService);
+  private readonly logger = inject(LoggingService);
 
   async ngOnInit() {
     await this.loadMyDoctors();
@@ -64,9 +65,11 @@ export class MyDoctorsComponent implements OnInit {
       // 3. Filtrer pour ne garder que mes médecins
       this.doctors = allDoctors.filter(d => doctorIds.includes(d.doctorId));
       this.logger.logAction('MY_DOCTORS_LOADED', '', { doctorsCount: this.doctors.length });
-    } catch (e: any) {
+    } catch (e: unknown) {
       this.error = 'Impossible de charger la liste de vos médecins';
-      this.logger.error('Failed to load my doctors: {}', e.message || e);
+      const error = e as { message?: string };
+      const errorMessage = error?.message || String(e);
+      this.logger.error('Failed to load my doctors', e, { errorMessage });
     } finally {
       this.loading = false;
     }
@@ -90,9 +93,11 @@ export class MyDoctorsComponent implements OnInit {
       });
 
       await this.loadMyDoctors();
-    } catch (e: any) {
-      this.error = e?.error?.error || 'Échec de la suppression du médecin';
-      this.logger.error('Failed to remove doctor {}: {}', doctor.doctorId, e?.error?.error || e.message);
+    } catch (e: unknown) {
+      const error = e as { error?: { error?: string }; message?: string };
+      const errorMessage = error?.error?.error || error?.message || 'Échec de la suppression du médecin';
+      this.error = errorMessage;
+      this.logger.error('Failed to remove doctor', e, { doctorId: doctor.doctorId, errorMessage });
     } finally {
       this.removingId = null;
     }
@@ -102,9 +107,10 @@ export class MyDoctorsComponent implements OnInit {
     this.modalOpen = true;
   }
 
-  onModalClosed(result?: AddDoctorModalResult): void {
+  onModalClosed(result?: unknown): void {
     this.modalOpen = false;
-    if (result?.added) {
+    const modalResult = result as AddDoctorModalResult | undefined;
+    if (modalResult?.added) {
       this.message = 'Médecin ajouté.';
       this.loadMyDoctors();
     }

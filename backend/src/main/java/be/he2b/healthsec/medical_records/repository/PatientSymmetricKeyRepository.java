@@ -21,8 +21,8 @@ public interface PatientSymmetricKeyRepository extends JpaRepository<PatientSymm
      * @param recipientUserId ID du destinataire (patient lui-même ou docteur)
      * @return La ligne PatientSymmetricKey, ou null si elle n'existe pas
      */
-    @Query("SELECT psk FROM PatientSymmetricKey psk " +
-           "WHERE psk.patient.id = :patientId AND psk.recipientUser.id = :recipientUserId")
+    @Query("SELECT psk FROM PatientSymmetricKey psk "
+           + "WHERE psk.patient.id = :patientId AND psk.recipientUser.id = :recipientUserId")
     PatientSymmetricKey findByPatientAndRecipient(
         @Param("patientId") UUID patientId,
         @Param("recipientUserId") UUID recipientUserId
@@ -36,8 +36,8 @@ public interface PatientSymmetricKeyRepository extends JpaRepository<PatientSymm
      * @param doctorId ID du docteur à retirer
      */
     @Modifying
-    @Query("DELETE FROM PatientSymmetricKey psk " +
-           "WHERE psk.patient.id = :patientId AND psk.recipientUser.id = :doctorId")
+    @Query("DELETE FROM PatientSymmetricKey psk "
+           + "WHERE psk.patient.id = :patientId AND psk.recipientUser.id = :doctorId")
     void deleteByPatientAndDoctor(
         @Param("patientId") UUID patientId,
         @Param("doctorId") UUID doctorId

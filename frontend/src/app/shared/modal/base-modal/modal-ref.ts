@@ -1,4 +1,4 @@
-export class ModalRef<T = any> {
+export class ModalRef<T = unknown> {
 
   private _closed = false;
 

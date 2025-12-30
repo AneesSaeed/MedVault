@@ -51,7 +51,9 @@ public class UserService {
 
     public MeResponseDTO getMe(String keycloakId, String role) {
         Optional<User> userOpt = userRepository.findByKeycloakId(keycloakId);
-        if (userOpt.isEmpty()) return null;
+        if (userOpt.isEmpty()) {
+            return null;
+        }
 
         User user = userOpt.get();
         UUID userId = user.getId();

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { LoggingService } from './logging.service';
 
 /**
@@ -15,8 +15,7 @@ import { LoggingService } from './logging.service';
   providedIn: 'root'
 })
 export class CryptoService {
-
-  constructor(private logger: LoggingService) {}
+  private readonly logger = inject(LoggingService);
 
   /**
    * Génère une paire de clés RSA (2048 bits)

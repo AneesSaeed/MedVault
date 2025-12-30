@@ -5,6 +5,8 @@ server:
     enabled: true
     key-store: /certs/internal/backend.p12
     key-store-type: PKCS12
+    # SECURITY NOTE: Password "secret" is for DEVELOPMENT ONLY.
+    # Matches docker-compose.yml and internal-certs/generate-internal-certs.sh
     key-store-password: secret
 
 spring:
@@ -24,6 +26,8 @@ spring:
           issuer-uri: ${KEYCLOAK_ISSUER_URI:https://localhost/auth/realms/health-realm}
           jwk-set-uri: ${KEYCLOAK_JWKS_URI:https://keycloak:8443/auth/realms/health-realm/protocol/openid-connect/certs}
 
+# Custom Keycloak Admin API configuration (used by KeycloakAdminService)
+# Properties are documented in META-INF/additional-spring-configuration-metadata.json
 keycloak:
   admin:
     base-url: ${KEYCLOAK_ADMIN_BASE_URL:https://keycloak:8443/auth}

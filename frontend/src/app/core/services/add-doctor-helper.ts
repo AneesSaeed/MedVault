@@ -3,17 +3,15 @@ import { KeyStoreService } from './key-store.service';
 import { PatientDoctorService } from './patient-doctor.service';
 import { MedicalFilesApi } from '../api/medical-files.api';
 import { PatientDataApi } from '../api/patient-data.api';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class AddDoctorHelper {
-  constructor(
-    private crypto: CryptoService,
-    private patientDoctorService: PatientDoctorService,
-    private medicalFilesApi: MedicalFilesApi,
-    private patientDataApi: PatientDataApi,
-    private keyStore: KeyStoreService
-  ) {}
+  private readonly crypto = inject(CryptoService);
+  private readonly patientDoctorService = inject(PatientDoctorService);
+  private readonly medicalFilesApi = inject(MedicalFilesApi);
+  private readonly patientDataApi = inject(PatientDataApi);
+  private readonly keyStore = inject(KeyStoreService);
 
   async addDoctorToPatient(
     doctorId: string,

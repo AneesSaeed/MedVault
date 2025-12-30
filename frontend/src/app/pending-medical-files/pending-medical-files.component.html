@@ -6,68 +6,80 @@
     </div>
   </div>
 
-  <div *ngIf="error" class="msg error">{{ error }}</div>
-  <div *ngIf="message" class="msg success">{{ message }}</div>
+  @if (error) {
+    <div class="msg error">{{ error }}</div>
+  }
+  @if (message) {
+    <div class="msg success">{{ message }}</div>
+  }
 
-  <div *ngIf="loading" class="muted">Chargement des demandes…</div>
+  @if (loading) {
+    <div class="muted">Chargement des demandes…</div>
+  }
 
-  <ng-container *ngIf="!loading && !error">
-    <div *ngIf="pendingFiles.length === 0" class="empty">
-      Aucune demande en attente.
-    </div>
+  @if (!loading && !error) {
+    @if (pendingFiles.length === 0) {
+      <div class="empty">
+        Aucune demande en attente.
+      </div>
+    }
 
-    <ul class="cards" *ngIf="pendingFiles.length">
-      <li *ngFor="let file of pendingFiles" class="card">
-        <div class="avatar" aria-hidden="true">Dr</div>
+    @if (pendingFiles.length) {
+      <ul class="cards">
+        @for (file of pendingFiles; track file.id) {
+          <li class="card">
+            <div class="avatar" aria-hidden="true">Dr</div>
 
-        <div class="info">
-          <div class="name" [title]="file.fileName">{{ file.fileName }}</div>
+            <div class="info">
+              <div class="name" [title]="file.fileName">{{ file.fileName }}</div>
 
-          <div class="meta">
-            <span>{{ formatFileSize(file.fileSize) }}</span>
-            <span>•</span>
-            <span>{{ file.mimeType }}</span>
-            <span>•</span>
-            <span>{{ formatDate(file.createdAt) }}</span>
-          </div>
+              <div class="meta">
+                <span>{{ formatFileSize(file.fileSize) }}</span>
+                <span>•</span>
+                <span>{{ file.mimeType }}</span>
+                <span>•</span>
+                <span>{{ formatDate(file.createdAt) }}</span>
+              </div>
 
-          <div class="by">
-            <span class="by-label">Proposé par</span>
-            <span class="by-pill" [title]="file.uploaderDoctorId">
-              {{ getDoctorDisplay(file.uploaderDoctorId) }}
-            </span>
-          </div>
-        </div>
+              <div class="by">
+                <span class="by-label">Proposé par</span>
+                <span class="by-pill" [title]="file.uploaderDoctorId">
+                  {{ getDoctorDisplay(file.uploaderDoctorId) }}
+                </span>
+              </div>
+            </div>
 
-        <div class="actions">
-          <button
-            type="button"
-            class="btn outline"
-            (click)="viewFile(file)"
-            [disabled]="viewingId === file.id || acceptingId === file.id || rejectingId === file.id"
-          >
-            {{ viewingId === file.id ? 'Téléchargement…' : 'Voir' }}
-          </button>
+            <div class="actions">
+              <button
+                type="button"
+                class="btn outline"
+                (click)="viewFile(file)"
+                [disabled]="viewingId === file.id || acceptingId === file.id || rejectingId === file.id"
+              >
+                {{ viewingId === file.id ? 'Téléchargement…' : 'Voir' }}
+              </button>
 
-          <button
-            type="button"
-            class="btn primary"
-            (click)="acceptRequest(file)"
-            [disabled]="viewingId === file.id || acceptingId === file.id || rejectingId === file.id"
-          >
-            {{ acceptingId === file.id ? 'Ajout…' : 'Accepter' }}
-          </button>
+              <button
+                type="button"
+                class="btn primary"
+                (click)="acceptRequest(file)"
+                [disabled]="viewingId === file.id || acceptingId === file.id || rejectingId === file.id"
+              >
+                {{ acceptingId === file.id ? 'Ajout…' : 'Accepter' }}
+              </button>
 
-          <button
-            type="button"
-            class="btn danger"
-            (click)="rejectRequest(file)"
-            [disabled]="viewingId === file.id || acceptingId === file.id || rejectingId === file.id"
-          >
-            {{ rejectingId === file.id ? 'Suppression…' : 'Supprimer' }}
-          </button>
-        </div>
-      </li>
-    </ul>
-  </ng-container>
+              <button
+                type="button"
+                class="btn danger"
+                (click)="rejectRequest(file)"
+                [disabled]="viewingId === file.id || acceptingId === file.id || rejectingId === file.id"
+              >
+                {{ rejectingId === file.id ? 'Suppression…' : 'Supprimer' }}
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  }
 </div>

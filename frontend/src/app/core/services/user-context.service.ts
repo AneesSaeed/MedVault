@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, from, switchMap, map } from 'rxjs';
 import { UserService, MeResponse } from './user.service';
 import { AuthService, AppRole } from './auth.service';
@@ -8,6 +8,12 @@ import { LoggingService } from './logging.service';
 
 @Injectable({ providedIn: 'root' })
 export class UserContextService {
+  private readonly userService = inject(UserService);
+  private readonly auth = inject(AuthService);
+  private readonly crypto = inject(CryptoService);
+  private readonly keyStore = inject(KeyStoreService);
+  private readonly logger = inject(LoggingService);
+
   get role(): AppRole | null {
     return this.auth.userRole;
   }
@@ -16,14 +22,6 @@ export class UserContextService {
 
   firstName: string | null = null;
   lastName: string | null = null;
-
-  constructor(
-    private userService: UserService,
-    private auth: AuthService,
-    private crypto: CryptoService,
-    private keyStore: KeyStoreService,
-    private logger: LoggingService
-  ) {}
 
   loadUserContext$(): Observable<MeResponse> {
     return this.userService.getMe().pipe(

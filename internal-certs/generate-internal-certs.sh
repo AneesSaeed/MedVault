@@ -11,6 +11,8 @@ CA_CRT="$DIR/ca.crt"
 
 # Java truststore containing CA_CRT, used by backend JVM to trust Keycloak TLS
 TRUSTSTORE="$DIR/truststore.jks"
+# SECURITY NOTE: Password "secret" is for DEVELOPMENT ONLY.
+# In production, use environment variable or secrets management.
 STOREPASS="secret"
 
 # Backend server identity (keypair + cert + PKCS12 keystore for Spring Boot)
@@ -101,11 +103,11 @@ EOF
 }
 
 echo "Issuing backend and keycloak certs..."
-# backend cert is valid for DNS:backend (and optional alias DNS:spring_backend)
+# backend cert is valid for DNS:backend (service name) and DNS:spring_backend (container name)
 issue backend  "$BACKEND_KEY"  "$BACKEND_CRT"  "DNS:backend,DNS:spring_backend"
 # keycloak cert is valid for DNS:keycloak
 issue keycloak "$KEYCLOAK_KEY" "$KEYCLOAK_CRT" "DNS:keycloak"
-# logstash cert is valid for DNS:logstash
+# logstash cert is valid for DNS:logstash (service name) and DNS:secu-project-logstash-1 (container name fallback)
 issue logstash "$LOGSTASH_KEY" "$LOGSTASH_CRT" "DNS:logstash,DNS:secu-project-logstash-1"
 # elasticsearch cert is valid for DNS:elasticsearch
 issue elasticsearch "$ELASTIC_KEY" "$ELASTIC_CRT" "DNS:elasticsearch"

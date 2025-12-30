@@ -111,7 +111,7 @@ export class DoctorSearchModalComponent implements OnInit {
       // then load all
       const res = await this.patientDoctorService.listAllDoctors().toPromise();
       this.doctors = (res?.doctors ?? []) as Doctor[];
-    } catch (e: unknown) {
+    } catch {
       this.error = 'Impossible de charger la liste des médecins';
       this.doctors = [];
     } finally {

@@ -11,7 +11,16 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import be.he2b.healthsec.medical_records.dto.MedicalFileInfoDTO;
@@ -20,7 +29,7 @@ import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.MedicalFileService;
 import be.he2b.healthsec.medical_records.service.UserService;
-import be.he2b.healthsec.medical_records.util.FileTypeValidator;
+import be.he2b.healthsec.medical_records.util.EncryptedFileValidator;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -256,42 +265,61 @@ public class MedicalFileController {
             throw new IllegalArgumentException("File too large (max 10 MB)");
         }
         
-        // SECURITY: Validation du type de fichier via magic bytes (Question 15 rapport sécurité)
-        // Note: Le fichier est chiffré côté client, donc cette validation s'applique
-        // aux fichiers non-chiffrés uploadés directement (si l'API est exposée)
+        // SECURITY: Tous les fichiers DOIVENT être chiffrés côté client avant upload
+        // Référence: SECURITY_CHECKLIST.md Section 1 - Confidentiality (zero-trust server)
+        // Le backend ne fait pas confiance au serveur, donc tous les fichiers doivent être chiffrés
+        String fileName = file.getOriginalFilename();
         String contentType = file.getContentType();
-        if (contentType != null && !contentType.equals("application/octet-stream")) {
-            // Si un content-type spécifique est fourni (non chiffré), valider
-            if (!FileTypeValidator.isAllowedMimeType(contentType)) {
-                logger.logSecurityEvent(
-                    "INVALID_FILE_TYPE_REJECTED",
-                    "system",
-                    "MEDIUM",
-                    Map.of("contentType", contentType, "fileName", file.getOriginalFilename())
-                );
-                throw new IllegalArgumentException(FileTypeValidator.getValidationErrorMessage(contentType));
-            }
+        
+        // EXIGENCE: Tous les fichiers doivent avoir l'extension .enc (fichiers chiffrés uniquement)
+        if (fileName == null || !fileName.endsWith(".enc")) {
+            logger.logSecurityEvent(
+                "UNENCRYPTED_FILE_REJECTED",
+                "system",
+                "HIGH",
+                Map.of(
+                    "fileName", fileName != null ? fileName : "null",
+                    "contentType", contentType != null ? contentType : "unknown",
+                    "fileSize", file.getSize(),
+                    "reason", "File must be encrypted client-side before upload (extension .enc required)"
+                )
+            );
+            throw new IllegalArgumentException(
+                "Tous les fichiers doivent être chiffrés côté client avant l'upload. " +
+                "Extension .enc requise. Le serveur ne fait pas confiance aux fichiers non-chiffrés."
+            );
+        }
+        
+        // Valider la structure chiffrée (IV 12 bytes + ciphertext)
+        try (InputStream inputStream = file.getInputStream()) {
+            boolean isValidEncrypted = EncryptedFileValidator.validateEncryptedFile(inputStream);
             
-            // Vérifier les magic bytes
-            try (InputStream inputStream = file.getInputStream()) {
-                boolean isValid = FileTypeValidator.validateFileType(inputStream, contentType);
-                if (!isValid) {
-                    logger.logSecurityEvent(
-                        "FILE_MAGIC_BYTES_MISMATCH",
-                        "system",
-                        "HIGH",
-                        Map.of(
-                            "contentType", contentType,
-                            "fileName", file.getOriginalFilename(),
-                            "fileSize", file.getSize()
-                        )
-                    );
-                    throw new IllegalArgumentException(FileTypeValidator.getValidationErrorMessage(contentType));
-                }
-            } catch (IOException e) {
-                logger.error("Failed to validate file type", e);
-                throw new IllegalArgumentException("Failed to read file for validation");
+            if (!isValidEncrypted) {
+                // Log détaillé pour débogage
+                logger.logSecurityEvent(
+                    "INVALID_ENCRYPTED_FILE_STRUCTURE",
+                    "system",
+                    "HIGH",
+                    Map.of(
+                        "fileName", fileName,
+                        "contentType", contentType != null ? contentType : "unknown",
+                        "fileSize", file.getSize(),
+                        "reason", "File does not match expected encrypted structure (IV + ciphertext)",
+                        "minSize", "13 bytes (IV 12 bytes + 1 byte minimum)"
+                    )
+                );
+                logger.error("Encrypted file validation failed", null, Map.of(
+                    "fileName", fileName,
+                    "fileSize", file.getSize()
+                ));
+                throw new IllegalArgumentException(EncryptedFileValidator.getValidationErrorMessage());
             }
+        } catch (IOException e) {
+            logger.error("Failed to validate encrypted file structure", e, Map.of(
+                "fileName", fileName,
+                "fileSize", file.getSize()
+            ));
+            throw new IllegalArgumentException("Failed to read file for validation: " + e.getMessage());
         }
     }
 
