@@ -6,14 +6,18 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
 
 import be.he2b.healthsec.medical_records.dto.CreateDoctorDTO;
 import be.he2b.healthsec.medical_records.dto.CreatePatientDTO;
@@ -29,6 +33,7 @@ import be.he2b.healthsec.medical_records.service.keycloak.KeycloakAdminService;
 
 @RestController
 @RequestMapping("/api")
+@Validated
 public class UserController {
 
     @Autowired
@@ -44,6 +49,7 @@ public class UserController {
     //  Check if the current authenticated Keycloak user exists
     // --------------------------------------------------------------
     @GetMapping("/user/exists")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Boolean> userExists(@AuthenticationPrincipal Jwt jwt) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/user/exists", keycloakId);
@@ -56,6 +62,7 @@ public class UserController {
     //  Get user’s info (after onboarding)
     // --------------------------------------------------------------
     @GetMapping("/user/me")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> userMe(@AuthenticationPrincipal Jwt jwt) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/user/me", keycloakId);
@@ -76,8 +83,10 @@ public class UserController {
     //  Create Patient (first-time onboarding)
     // --------------------------------------------------------------
     @PostMapping("/patient")
-    public ResponseEntity<?> createPatient(@AuthenticationPrincipal Jwt jwt,
-                                          @RequestBody CreatePatientDTO dto) {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> createPatient(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody CreatePatientDTO dto) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("POST", "/api/patient", keycloakId);
 
@@ -119,8 +128,10 @@ public class UserController {
     //  Create Doctor (first-time onboarding)
     // --------------------------------------------------------------
     @PostMapping("/doctor")
-    public ResponseEntity<?> createDoctor(@AuthenticationPrincipal Jwt jwt,
-                                         @RequestBody CreateDoctorDTO dto) {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> createDoctor(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody CreateDoctorDTO dto) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("POST", "/api/doctor", keycloakId);
 
@@ -162,8 +173,10 @@ public class UserController {
     //  Get patient data with encrypted symmetric key
     // --------------------------------------------------------------
     @GetMapping("/patient/{patientId}/data")
-    public ResponseEntity<?> getPatientData(@AuthenticationPrincipal Jwt jwt,
-                                           @PathVariable String patientId) {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getPatientData(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String patientId) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/patient/" + patientId + "/data", keycloakId);
 

@@ -1,12 +1,16 @@
 package be.he2b.healthsec.medical_records.controller;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,11 +20,13 @@ import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.MedicalFileService;
 import be.he2b.healthsec.medical_records.service.UserService;
+import be.he2b.healthsec.medical_records.util.FileTypeValidator;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/medical-files")
 @RequiredArgsConstructor
+@Validated
 public class MedicalFileController {
 
     private static final long MAX_BYTES = 10L * 1024 * 1024; // 10 MB
@@ -28,8 +34,10 @@ public class MedicalFileController {
     private final MedicalFileService medicalFileService;
     private final UserService userService;
     private final LoggingService logger;
+    private final be.he2b.healthsec.medical_records.config.RateLimitService rateLimitService;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> listMyFiles(@AuthenticationPrincipal Jwt jwt) {
         logger.logApiRequest("GET", "/api/medical-files", jwt.getSubject());
         try {
@@ -47,6 +55,7 @@ public class MedicalFileController {
     }
 
     @GetMapping("/patient/{patientId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> listFilesForDoctor(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String patientId
@@ -69,6 +78,7 @@ public class MedicalFileController {
     }
 
     @PostMapping(consumes = "multipart/form-data")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> upload(
         @AuthenticationPrincipal Jwt jwt,
         @RequestParam("fileNameEncBase64") String fileNameEncBase64,
@@ -77,6 +87,24 @@ public class MedicalFileController {
         @RequestPart("file") MultipartFile file
     ) {
         logger.logApiRequest("POST", "/api/medical-files", jwt.getSubject());
+        
+        // SECURITY: Rate limiting sur les uploads de fichiers (Question 10 rapport sécurité)
+        String userId = jwt.getSubject();
+        boolean allowed = rateLimitService.isRequestAllowed(
+            userId,
+            be.he2b.healthsec.medical_records.config.RateLimitService.RequestType.FILE_UPLOAD
+        );
+        
+        if (!allowed) {
+            rateLimitService.recordRequest(userId, 
+                be.he2b.healthsec.medical_records.config.RateLimitService.RequestType.FILE_UPLOAD, 
+                false
+            );
+            return ResponseEntity.status(429).body(
+                Map.of("error", "Too many requests. Please try again later.")
+            );
+        }
+        
         try {
             UUID patientId = currentPatientIdOrThrow(jwt);
             validateEncryptedUploadOrThrow(file);
@@ -100,6 +128,7 @@ public class MedicalFileController {
     }
 
     @PutMapping(value = "/{fileId}", consumes = "multipart/form-data")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> overwrite(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String fileId,
@@ -130,6 +159,7 @@ public class MedicalFileController {
     }
 
     @DeleteMapping("/{fileId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> delete(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String fileId
@@ -150,6 +180,7 @@ public class MedicalFileController {
     }
 
     @GetMapping("/{fileId}/download")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> downloadMyFile(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String fileId
@@ -175,6 +206,7 @@ public class MedicalFileController {
     }
 
     @GetMapping("/patient/{patientId}/{fileId}/download")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> downloadFileForDoctor(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String patientId,
@@ -200,6 +232,7 @@ public class MedicalFileController {
     
 
     @PostMapping("/share/doctor/{doctorId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> shareKeysWithDoctor(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String doctorId,
@@ -221,6 +254,44 @@ public class MedicalFileController {
         }
         if (file.getSize() > MAX_BYTES) {
             throw new IllegalArgumentException("File too large (max 10 MB)");
+        }
+        
+        // SECURITY: Validation du type de fichier via magic bytes (Question 15 rapport sécurité)
+        // Note: Le fichier est chiffré côté client, donc cette validation s'applique
+        // aux fichiers non-chiffrés uploadés directement (si l'API est exposée)
+        String contentType = file.getContentType();
+        if (contentType != null && !contentType.equals("application/octet-stream")) {
+            // Si un content-type spécifique est fourni (non chiffré), valider
+            if (!FileTypeValidator.isAllowedMimeType(contentType)) {
+                logger.logSecurityEvent(
+                    "INVALID_FILE_TYPE_REJECTED",
+                    "system",
+                    "MEDIUM",
+                    Map.of("contentType", contentType, "fileName", file.getOriginalFilename())
+                );
+                throw new IllegalArgumentException(FileTypeValidator.getValidationErrorMessage(contentType));
+            }
+            
+            // Vérifier les magic bytes
+            try (InputStream inputStream = file.getInputStream()) {
+                boolean isValid = FileTypeValidator.validateFileType(inputStream, contentType);
+                if (!isValid) {
+                    logger.logSecurityEvent(
+                        "FILE_MAGIC_BYTES_MISMATCH",
+                        "system",
+                        "HIGH",
+                        Map.of(
+                            "contentType", contentType,
+                            "fileName", file.getOriginalFilename(),
+                            "fileSize", file.getSize()
+                        )
+                    );
+                    throw new IllegalArgumentException(FileTypeValidator.getValidationErrorMessage(contentType));
+                }
+            } catch (IOException e) {
+                logger.error("Failed to validate file type", e);
+                throw new IllegalArgumentException("Failed to read file for validation");
+            }
         }
     }
 

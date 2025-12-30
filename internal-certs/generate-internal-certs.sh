@@ -27,6 +27,14 @@ LOGSTASH_KEY="$DIR/logstash.key"
 LOGSTASH_CRT="$DIR/logstash.crt"
 LOGSTASH_P12="$DIR/logstash.p12"
 
+# Elasticsearch identity (keypair + cert)
+ELASTIC_KEY="$DIR/elasticsearch.key"
+ELASTIC_CRT="$DIR/elasticsearch.crt"
+
+# Kibana identity (keypair + cert)
+KIBANA_KEY="$DIR/kibana.key"
+KIBANA_CRT="$DIR/kibana.crt"
+
 
 fix_perms() {
   chmod 755 "$DIR" || true
@@ -50,7 +58,7 @@ fix_perms() {
 }
 
 
-if [[ -f "$CA_CRT" && -f "$BACKEND_P12" && -f "$KEYCLOAK_CRT" && -f "$LOGSTASH_P12" && -f "$TRUSTSTORE" ]]; then
+if [[ -f "$CA_CRT" && -f "$BACKEND_P12" && -f "$KEYCLOAK_CRT" && -f "$LOGSTASH_P12" && -f "$TRUSTSTORE" && -f "$ELASTIC_CRT" && -f "$KIBANA_CRT" ]]; then
   echo "Internal certs already exist in $DIR"
   fix_perms
   exit 0
@@ -99,6 +107,10 @@ issue backend  "$BACKEND_KEY"  "$BACKEND_CRT"  "DNS:backend,DNS:spring_backend"
 issue keycloak "$KEYCLOAK_KEY" "$KEYCLOAK_CRT" "DNS:keycloak"
 # logstash cert is valid for DNS:logstash
 issue logstash "$LOGSTASH_KEY" "$LOGSTASH_CRT" "DNS:logstash,DNS:secu-project-logstash-1"
+# elasticsearch cert is valid for DNS:elasticsearch
+issue elasticsearch "$ELASTIC_KEY" "$ELASTIC_CRT" "DNS:elasticsearch"
+# kibana cert is valid for DNS:kibana
+issue kibana "$KIBANA_KEY" "$KIBANA_CRT" "DNS:kibana"
 
 echo "Creating backend PKCS12 keystore..."
 # Spring Boot reads PKCS12 keystore for server.ssl.key-store

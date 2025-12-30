@@ -176,17 +176,31 @@ services:
   # === ELK STACK FOR LOGGING ===
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    group_add:
+      - 0  # allow reading 640 keys issued to group 0
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      - xpack.security.enabled=true
       - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.verification_mode=certificate
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certs/internal/elasticsearch.crt
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certs/internal/elasticsearch.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/internal/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certs/internal/elasticsearch.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certs/internal/elasticsearch.key
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/internal/ca.crt
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - "9200:9200"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
+      - internal_certs:/usr/share/elasticsearch/config/certs/internal:ro
     healthcheck:
-      test: curl -s http://localhost:9200 >/dev/null || exit 1
+      test: ["CMD-SHELL", "curl -s --cacert /usr/share/elasticsearch/config/certs/internal/ca.crt -u elastic:${ELASTIC_PASSWORD:-changeme} https://elasticsearch:9200 >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -207,6 +221,8 @@ services:
       - "5002:5002"     # HTTPS input from frontend
     environment:
       - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+      - ELASTIC_USER=elastic
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -223,19 +239,29 @@ services:
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.0
+    group_add:
+      - 0
     ports:
       - "5601:5601"
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:-changeme}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/internal/ca.crt
+      - SERVER_SSL_ENABLED=true
+      - SERVER_SSL_CERTIFICATE=/usr/share/kibana/config/certs/internal/kibana.crt
+      - SERVER_SSL_KEY=/usr/share/kibana/config/certs/internal/kibana.key
     depends_on:
       elasticsearch:
         condition: service_healthy
     healthcheck:
-      test: curl -f http://localhost:5601 || exit 1
+      test: ["CMD-SHELL", "curl -f --cacert /usr/share/kibana/config/certs/internal/ca.crt https://localhost:5601 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: always
+    volumes:
+      - internal_certs:/usr/share/kibana/config/certs/internal:ro
 volumes:
   db_data:
   keycloak_db_data:

@@ -1,5 +1,6 @@
 package be.he2b.healthsec.medical_records.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,9 +13,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreatePendingMedicalFileDTO {
-    private String fileNameEncBase64; // optionnel
+    @NotBlank(message = "fileNameEncBase64 is required")
+    private String fileNameEncBase64;
+
+    @NotBlank(message = "contentEncBase64 is required")
     private String contentEncBase64;
+
+    @NotBlank(message = "ivBase64 is required")
     private String ivBase64;
+
+    @NotBlank(message = "wrappedTempKeyForPatientBase64 is required")
     private String wrappedTempKeyForPatientBase64;
-    private String mimeTypeEncBase64; // optionnel
+
+    @NotBlank(message = "mimeTypeEncBase64 is required")
+    private String mimeTypeEncBase64;
 }
