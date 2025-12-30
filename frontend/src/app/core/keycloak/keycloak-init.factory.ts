@@ -21,7 +21,8 @@ export function initializeKeycloak(keycloak: KeycloakService) {
       initOptions: {
         onLoad: 'login-required',         // Forces Keycloak login when the app loads
         checkLoginIframe: false,
-        pkceMethod: 'S256'
+        pkceMethod: 'S256',
+        redirectUri: 'https://localhost/'
       },
       bearerExcludedUrls: [] // REQUIRED after adding nginx HTTPS
     });

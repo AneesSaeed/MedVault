@@ -20,9 +20,10 @@ type MedicalFileVM = MedicalFile & {
 
 
 @Component({
-  selector: 'app-home',
-  templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss'],
+    selector: 'app-home',
+    templateUrl: './home.component.html',
+    styleUrls: ['./home.component.scss'],
+    standalone: false
 })
 export class HomeComponent implements OnInit {
   files: MedicalFile[] = [];
@@ -70,10 +71,20 @@ export class HomeComponent implements OnInit {
 
         this.userContext.loadUserContext$().subscribe({
           next: () => {
-            if (this.role === 'PATIENT') {
+            const role = this.userContext.role;
+
+            if (role === 'DOCTOR') {
+              this.router.navigateByUrl('/my-patients');
+              return;
+            }
+
+            if (role === 'PATIENT') {
               this.loadPatientData();
               this.refresh();
+              return;
             }
+
+            this.error = 'Unknown role';
           },
           error: () => {
             this.error = 'Failed to load user context';
@@ -420,6 +431,11 @@ export class HomeComponent implements OnInit {
     })();
   }
 
+  clearNewSelection(): void {
+    this.selectedNewFile = null;
+  }
+
+  // HELPERS
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
     let binary = '';

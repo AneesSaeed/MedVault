@@ -2,13 +2,20 @@ import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../core/services/auth.service';
 import { PendingFileHelper, DecryptedPendingFile } from '../core/services/pending-file.helper';
 import { LoggingService } from '../core/services/logging.service';
-// import { UserContextService } from '../core/services/user-context.service';
+import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { sanitizeFilename } from '../core/utils/sanitize.util';
+
+type DoctorLite = {
+  doctorId: string;
+  firstName: string;
+  lastName: string;
+};
 
 @Component({
   selector: 'app-pending-medical-files',
   templateUrl: './pending-medical-files.component.html',
-  styleUrls: ['./pending-medical-files.component.scss']
+  styleUrls: ['./pending-medical-files.component.scss'],
+  standalone: false
 })
 export class PendingMedicalFilesComponent implements OnInit {
   loading = false;
@@ -28,10 +35,11 @@ export class PendingMedicalFilesComponent implements OnInit {
   constructor(
     private auth: AuthService,
     private pendingFileHelper: PendingFileHelper,
-    private logger: LoggingService
+    private logger: LoggingService,
+    private patientDoctorService: PatientDoctorService
   ) {}
 
-  async ngOnInit() {
+  async ngOnInit(): Promise<void> {
     await this.loadPendingRequests();
   }
 
@@ -46,11 +54,12 @@ export class PendingMedicalFilesComponent implements OnInit {
     try {
       const keycloakId = this.auth.sub;
       this.logger.debug('Loading pending requests', { keycloakId }, 'PendingMedicalFilesComponent');
+
       this.pendingFiles = await this.pendingFileHelper.listPendingRequests(keycloakId);
 
-      if (this.pendingFiles.length === 0) {
-        this.message = 'Aucune demande en attente';
-      }
+      // Best-effort: resolve doctor names (non-blocking errors)
+      await this.resolveDoctorNames();
+
       this.logger.info('Loaded pending requests', { count: this.pendingFiles.length }, 'PendingMedicalFilesComponent');
     } catch (e: any) {
       this.logger.error('Error loading pending requests', e, {}, 'PendingMedicalFilesComponent');
@@ -58,6 +67,41 @@ export class PendingMedicalFilesComponent implements OnInit {
     } finally {
       this.loading = false;
     }
+  }
+
+  private async resolveDoctorNames(): Promise<void> {
+    try {
+      const uploaderIds = Array.from(
+        new Set(this.pendingFiles.map(f => f.uploaderDoctorId).filter(Boolean))
+      );
+
+      if (uploaderIds.length === 0) return;
+
+      const allDoctorsRes = await this.patientDoctorService.listAllDoctors().toPromise();
+      const allDoctors: DoctorLite[] = (allDoctorsRes?.doctors ?? []) as DoctorLite[];
+
+      const map = new Map<string, { firstName: string; lastName: string }>();
+      for (const d of allDoctors) {
+        if (uploaderIds.includes(d.doctorId)) {
+          map.set(d.doctorId, { firstName: d.firstName, lastName: d.lastName });
+        }
+      }
+      this.doctorInfo = map;
+    } catch (e: any) {
+      // Do not fail the page for name resolution issues
+      this.logger.debug(
+        'Failed to resolve doctor names for pending files',
+        { message: e?.message || e },
+        'PendingMedicalFilesComponent'
+      );
+    }
+  }
+
+  getDoctorDisplay(uploaderDoctorId: string): string {
+    const info = this.doctorInfo.get(uploaderDoctorId);
+    if (info) return `Dr ${info.firstName} ${info.lastName}`;
+    const short = (uploaderDoctorId || '').slice(0, 8);
+    return short ? `Médecin ${short}…` : 'Médecin';
   }
 
   /**
@@ -69,16 +113,16 @@ export class PendingMedicalFilesComponent implements OnInit {
     this.message = null;
 
     try {
-      this.logger.debug('Viewing pending file', { fileId: file.id, fileName: file.fileName }, 'PendingMedicalFilesComponent');
-      const keycloakId = this.auth.sub;
-
-      // Déchiffre le fichier
-      const decryptedBlob = await this.pendingFileHelper.viewFile(
-        keycloakId,
-        file
+      this.logger.debug(
+        'Viewing pending file',
+        { fileId: file.id, fileName: file.fileName },
+        'PendingMedicalFilesComponent'
       );
 
-      // Télécharge le fichier pour prévisualisation
+      const keycloakId = this.auth.sub;
+
+      const decryptedBlob = await this.pendingFileHelper.viewFile(keycloakId, file);
+
       const url = URL.createObjectURL(decryptedBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -87,7 +131,11 @@ export class PendingMedicalFilesComponent implements OnInit {
       URL.revokeObjectURL(url);
 
       this.message = `Fichier téléchargé pour visualisation: ${file.fileName}`;
-      this.logger.info('Pending file viewed (downloaded)', { fileId: file.id, fileName: file.fileName }, 'PendingMedicalFilesComponent');
+      this.logger.info(
+        'Pending file viewed (downloaded)',
+        { fileId: file.id, fileName: file.fileName },
+        'PendingMedicalFilesComponent'
+      );
     } catch (e: any) {
       this.error = e?.message || 'Erreur lors de la visualisation';
       this.logger.error('View error', e, { fileId: file.id }, 'PendingMedicalFilesComponent');
@@ -100,21 +148,29 @@ export class PendingMedicalFilesComponent implements OnInit {
    * Rejette (refuse) une demande
    */
   async rejectRequest(file: DecryptedPendingFile): Promise<void> {
-    if (!confirm(`Rejeter la demande pour "${file.fileName}" ?`)) {
-      return;
-    }
+    if (!confirm(`Rejeter la demande pour "${file.fileName}" ?`)) return;
 
     this.rejectingId = file.id;
     this.error = null;
     this.message = null;
 
     try {
-      this.logger.debug('Rejecting pending request', { fileId: file.id, fileName: file.fileName }, 'PendingMedicalFilesComponent');
-      await this.pendingFileHelper.rejectRequest(file.id);
-      this.message = `Demande rejetée: ${file.fileName}`;
-      this.logger.logAction('PENDING_FILE_REJECTED', this.auth.sub, { fileId: file.id, fileName: file.fileName }, 'PendingMedicalFilesComponent');
+      this.logger.debug(
+        'Rejecting pending request',
+        { fileId: file.id, fileName: file.fileName },
+        'PendingMedicalFilesComponent'
+      );
 
-      // Retirer de la liste
+      await this.pendingFileHelper.rejectRequest(file.id);
+
+      this.message = `Demande rejetée: ${file.fileName}`;
+      this.logger.logAction(
+        'PENDING_FILE_REJECTED',
+        this.auth.sub,
+        { fileId: file.id, fileName: file.fileName },
+        'PendingMedicalFilesComponent'
+      );
+
       this.pendingFiles = this.pendingFiles.filter(f => f.id !== file.id);
     } catch (e: any) {
       this.error = e?.message || 'Erreur lors du rejet';
@@ -128,7 +184,11 @@ export class PendingMedicalFilesComponent implements OnInit {
    * Accepte une demande, ajoute le fichier au dossier médical et le partage avec tous les médecins
    */
   async acceptRequest(file: DecryptedPendingFile): Promise<void> {
-    if (!confirm(`Accepter et ajouter "${file.fileName}" à votre dossier médical ?\n\nLe fichier sera partagé avec tous vos médecins.`)) {
+    if (
+      !confirm(
+        `Accepter et ajouter "${file.fileName}" à votre dossier médical ?\n\nLe fichier sera partagé avec tous vos médecins.`
+      )
+    ) {
       return;
     }
 
@@ -137,22 +197,27 @@ export class PendingMedicalFilesComponent implements OnInit {
     this.message = null;
 
     try {
-      this.logger.debug('Accepting pending request', { fileId: file.id, fileName: file.fileName }, 'PendingMedicalFilesComponent');
-      const keycloakId = this.auth.sub;
-
-      // Accepte et ajoute au dossier médical + partage avec tous les médecins
-      await this.pendingFileHelper.acceptAndAddToMedicalRecord(
-        keycloakId,
-        file
+      this.logger.debug(
+        'Accepting pending request',
+        { fileId: file.id, fileName: file.fileName },
+        'PendingMedicalFilesComponent'
       );
 
-      this.message = `Fichier "${file.fileName}" ajouté à votre dossier médical et partagé avec vos médecins`;
-      this.logger.logAction('PENDING_FILE_ACCEPTED_AND_SHARED', keycloakId, { fileId: file.id, fileName: file.fileName }, 'PendingMedicalFilesComponent');
+      const keycloakId = this.auth.sub;
 
-      // Retirer de la liste
+      await this.pendingFileHelper.acceptAndAddToMedicalRecord(keycloakId, file);
+
+      this.message = `Fichier "${file.fileName}" ajouté à votre dossier médical et partagé avec vos médecins`;
+      this.logger.logAction(
+        'PENDING_FILE_ACCEPTED_AND_SHARED',
+        keycloakId,
+        { fileId: file.id, fileName: file.fileName },
+        'PendingMedicalFilesComponent'
+      );
+
       this.pendingFiles = this.pendingFiles.filter(f => f.id !== file.id);
     } catch (e: any) {
-      this.error = e?.message || 'Erreur lors de l\'acceptation';
+      this.error = e?.message || "Erreur lors de l'acceptation";
       this.logger.error('Accept error', e, { fileId: file.id }, 'PendingMedicalFilesComponent');
     } finally {
       this.acceptingId = null;

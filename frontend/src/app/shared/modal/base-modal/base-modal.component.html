@@ -1,0 +1,29 @@
+<!-- Dark overlay behind the modal -->
+<div
+  class="backdrop"
+  role="button"
+  tabindex="0"
+  aria-label="Close dialog"
+  (click)="close()"
+  (keydown.enter)="close()"
+  (keydown.space)="close()"
+></div>
+
+<div
+  class="modal"
+  role="dialog"
+  aria-modal="true"
+  (mousedown)="$event.stopPropagation()"
+>
+  <div class="header">
+    <h3>{{ title }}</h3>
+    <button type="button" class="x" (click)="close()">✕</button>
+  </div>
+
+  <div class="content">
+    <ng-container
+      [ngComponentOutlet]="component"
+      [ngComponentOutletInjector]="childInjector">
+    </ng-container>
+  </div>
+</div>

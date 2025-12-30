@@ -1,0 +1,56 @@
+<div class="modal-page">
+  <div class="page-head">
+    <div>
+      <h4>Ajouter un médecin</h4>
+      <p class="hint">Recherchez par nom/prénom ou laissez vide pour afficher tous les médecins.</p>
+    </div>
+  </div>
+
+  <div class="search-card">
+    <input
+      class="search-input"
+      type="text"
+      [(ngModel)]="searchTerm"
+      placeholder="Nom ou prénom du médecin"
+      [disabled]="loading"
+      (keydown.enter)="onSearch()"
+    />
+
+    <button class="btn primary" (click)="onSearch()" [disabled]="loading">
+      {{ loading ? 'Recherche…' : 'Rechercher' }}
+    </button>
+  </div>
+
+  <div *ngIf="message" class="msg success">{{ message }}</div>
+  <div *ngIf="error" class="msg error">{{ error }}</div>
+  <div *ngIf="loading" class="muted">Chargement…</div>
+
+  <ul class="results" *ngIf="!loading && doctors.length">
+    <li *ngFor="let d of doctors" class="result">
+      <div class="avatar" aria-hidden="true">
+        {{ (d.firstName?.trim() || d.lastName?.trim() || '?').charAt(0).toUpperCase() }}
+      </div>
+
+      <div class="info">
+        <div class="name">{{ d.firstName }} {{ d.lastName }}</div>
+        <div class="org">{{ d.medicalOrganization }}</div>
+
+        <div *ngIf="isAlreadyAdded(d.doctorId)" class="badge">
+          Already added
+        </div>
+      </div>
+
+      <button
+        class="btn"
+        (click)="addDoctor(d)"
+        [disabled]="addingId===d.doctorId || isAlreadyAdded(d.doctorId)"
+      >
+        <ng-container *ngIf="addingId===d.doctorId">Ajout…</ng-container>
+        <ng-container *ngIf="addingId!==d.doctorId && !isAlreadyAdded(d.doctorId)">Ajouter</ng-container>
+        <ng-container *ngIf="addingId!==d.doctorId && isAlreadyAdded(d.doctorId)">Ajouté</ng-container>
+      </button>
+    </li>
+  </ul>
+
+  <div *ngIf="!loading && !doctors.length" class="empty">Aucun médecin trouvé.</div>
+</div>

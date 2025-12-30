@@ -1,46 +1,107 @@
-.page { max-width: 900px; margin: 16px auto; }
-.patients { list-style: none; padding: 0; }
-.patient { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; flex-direction: column; gap: 8px; }
-.main { display: flex; gap: 16px; align-items: baseline; }
-.name { font-weight: 600; }
-.email { color: #555; font-size: 13px; }
-.actions { display: flex; gap: 8px; }
-.details { background: #f7f7f7; padding: 8px; border-radius: 4px; }
-.msg.error { background: #fdecea; color: #b71c1c; padding: 8px; border-radius: 4px; margin: 12px 0; }
-.msg.success { background: #e8f5e9; color: #2e7d32; padding: 8px; border-radius: 4px; margin: 12px 0; }
-.empty { color: #777; margin-top: 12px; }
+@use '../../styles/variables' as *;
 
-.files {
-  background: #f9f9f9;
+.page { max-width: 1000px; margin: 16px auto; padding: 0 12px; }
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  h2 { margin: 0; }
+}
+
+.muted { color: #777; }
+.msg.error { background: #fdecea; color: #b71c1c; padding: 10px; border-radius: 8px; margin: 12px 0; }
+
+.folders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.folder {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+
   padding: 12px;
-  border-radius: 4px;
-  margin-top: 12px;
-  ul { list-style: none; padding: 0; margin: 8px 0; }
-  li {
-    display: flex; justify-content: space-between; padding: 8px; background: white;
-    border: 1px solid #eee; border-radius: 3px; margin-bottom: 6px; font-size: 13px;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  background: #fff;
+  box-shadow: $shadow-card;
+
+  cursor: pointer;
+  transition: transform .08s ease, background-color .08s ease, border-color .08s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    background: $color-hover;
+    border-color: #e2e6ea;
   }
-  button { padding: 4px 10px; font-size: 12px; border: none; border-radius: 3px; background: #2196f3; color: white; cursor: pointer; }
-  button:hover { background: #1976d2; }
+
+  &:active { transform: translateY(0); }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
 }
 
-.upload-section {
-  background: #f0f7ff; padding: 12px; border: 1px solid #90caf9; border-radius: 4px; margin-top: 12px;
-  h4 { margin: 0 0 8px 0; color: #1976d2; font-size: 14px; }
+/* very simple folder: tab + body */
+.icon {
+  width: 42px;
+  height: 32px;
+  position: relative;
+  flex: 0 0 auto;
 }
 
-.upload-form {
-  display: flex; flex-direction: column; gap: 8px;
-  input[type="file"] { padding: 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
-  .file-name { display: inline-block; font-size: 12px; color: #666; padding: 4px 8px; background: white; border-radius: 3px; border: 1px solid #e0e0e0; }
+.icon::before {
+  content: '';
+  position: absolute;
+  left: opx;
+  top: 0px;
+  width: 16px;
+  height: 8px;
+  border: 1px solid #cfd6de;
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  background: #eef2f6;
 }
 
-.upload-actions {
-  display: flex; gap: 8px;
-  button { flex: 1; padding: 6px; border: none; border-radius: 3px; font-size: 13px; cursor: pointer; transition: background 0.2s; }
-  button:first-child { background: #4caf50; color: white; }
-  button:first-child:hover:not(:disabled) { background: #45a049; }
-  button:first-child:disabled, button:last-child:disabled { background: #ccc; cursor: not-allowed; }
-  button:last-child { background: #f44336; color: white; }
-  button:last-child:hover:not(:disabled) { background: #da190b; }
+.icon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  bottom: 0;
+  border: 1px solid #cfd6de;
+  border-radius:  2px 6px 6px 6px;
+  background: #f7f9fb;
 }
+
+.folder:hover .icon::before,
+.folder:hover .icon::after,
+.folder:focus-visible .icon::before,
+.folder:focus-visible .icon::after {
+  border-color: $color-primary;
+}
+
+.text {
+  min-width: 0;
+
+  .name { font-weight: 700; }
+  .meta {
+    font-size: 13px;
+    color: #666;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.empty { color: #777; margin-top: 12px; }

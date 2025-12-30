@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import be.he2b.healthsec.medical_records.dto.MedicalFileInfoDTO;
 import be.he2b.healthsec.medical_records.logging.LoggingService;
 import be.he2b.healthsec.medical_records.model.User;
-import be.he2b.healthsec.medical_records.model.UserType;
+import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.MedicalFileService;
 import be.he2b.healthsec.medical_records.service.UserService;
 import be.he2b.healthsec.medical_records.util.FileTypeValidator;
@@ -296,23 +296,22 @@ public class MedicalFileController {
     }
 
     private UUID currentPatientIdOrThrow(Jwt jwt) {
+        if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
+            throw new IllegalArgumentException("Only patients can manage medical files");
+        }
         String keycloakId = jwt.getSubject();
         User user = userService.findByKeycloakId(keycloakId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        if (user.getRole() != UserType.PATIENT) {
-            throw new IllegalArgumentException("Only patients can manage medical files");
-        }
         return user.getId();
     }
 
     private UUID currentDoctorIdOrThrow(Jwt jwt) {
+        if (!JwtRoles.hasRealmRole(jwt, "DOCTOR")) {
+            throw new IllegalArgumentException("Only doctors can access patient files");
+        }
         String keycloakId = jwt.getSubject();
         User user = userService.findByKeycloakId(keycloakId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        if (user.getRole() != UserType.DOCTOR) {
-            throw new IllegalArgumentException("Only doctors can access patient files");
-        }
         return user.getId();
     }
 }

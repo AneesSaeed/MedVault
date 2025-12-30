@@ -1,4 +1,7 @@
 $color-primary: rgb(66, 140, 219);
+$color-primary-light: rgba(66, 140, 219, 0.08);
+$color-primary-soft: rgba(66, 140, 219, 0.12);
+
 $color-on-primary: white;
 $color-primary-dark: rgb(66, 140, 255);
 $color-secondary: rgb(76, 175, 80); // green for Doctor button
@@ -6,3 +9,6 @@ $color-hover: #eff1f2;
 
 $shadow-header: 0 2px 6px rgba(0, 0, 0, 0.15);
 $shadow-card: 0 4px 12px rgba(0, 0, 0, 0.10); // used by onboarding container
+
+$color-danger: rgb(244, 67, 54);
+$color-danger-soft: rgba(244, 67, 54, 0.10);

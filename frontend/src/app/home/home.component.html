@@ -1,62 +1,108 @@
 <section *ngIf="role === 'PATIENT'" class="files-card">
-  <h2>Medical record files</h2>
+  <div class="card-head">
+    <div>
+      <h2>Medical record files</h2>
+      <p class="hint">Allowed: .txt, .pdf, .doc/.docx, .jpg/.jpeg, .png — max 10 MB</p>
+    </div>
+  </div>
 
-  <div *ngIf="error" class="error">{{ error }}</div>
-  <div *ngIf="loading" class="muted">Loading...</div>
+  <div *ngIf="error" class="msg error">{{ error }}</div>
 
-  <div class="upload-row">
+  <div class="upload-card">
     <input
+      #newFileInput
+      class="file-input"
       type="file"
       accept=".txt,.pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,text/plain,image/jpeg,image/png,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       (change)="onNewFileChange($event)"
+      [disabled]="loading"
     />
-    <div class="muted">
-      Allowed: .txt, .pdf, .doc/.docx, .jpg/.jpeg, .png — max 10 MB
+
+    <div class="upload-row">
+      <button type="button" class="btn outline" (click)="newFileInput.click()" [disabled]="loading">
+        Choose file
+      </button>
+
+      <ng-container *ngIf="selectedNewFile; else noNewFile">
+        <span class="chip" [title]="selectedNewFile.name">{{ selectedNewFile.name }}</span>
+        <button type="button" class="link danger" (click)="clearNewSelection()" [disabled]="loading">
+          Remove
+        </button>
+      </ng-container>
+
+      <ng-template #noNewFile>
+        <span class="muted">No file selected</span>
+      </ng-template>
+
+      <span class="spacer"></span>
+
+      <button type="button" class="btn primary" (click)="upload()" [disabled]="!selectedNewFile || loading">
+        {{ loading ? 'Uploading…' : 'Upload' }}
+      </button>
     </div>
-    <button (click)="upload()" [disabled]="!selectedNewFile || loading">
-      Upload
-    </button>
   </div>
 
-  <div *ngIf="!loading && files.length === 0" class="muted">
-    No files uploaded yet.
-  </div>
+  <!-- States -->
+  <div *ngIf="loading" class="muted">Loading...</div>
 
-  <table *ngIf="filesVm.length > 0" class="files-table">
-    <thead>
-      <tr>
-        <th>Filename</th>
-        <th>Uploaded</th>
-        <th>Size (bytes)</th>
-        <th>Download</th>
-        <th>Overwrite</th>
-        <th>Delete</th>
-      </tr>
-    </thead>
+  <ng-container *ngIf="!loading && !error">
+    <div *ngIf="filesVm.length === 0" class="empty muted">
+      No files uploaded yet.
+    </div>
+    <div class="table-wrap" *ngIf="filesVm.length > 0">
+      <table class="files-table">
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th>Uploaded</th>
+            <th>Size</th>
+            <th class="right">Download</th>
+            <th>Overwrite</th>
+            <th class="right">Delete</th>
+          </tr>
+        </thead>
 
-    <tbody>
-      <tr *ngFor="let f of filesVm">
-        <td>{{ f.fileName }}</td>
-        <td>{{ f.uploadDateIso | date:'medium' }}</td>
-        <td>{{ f.sizeBytes }}</td>
+        <tbody>
+          <tr *ngFor="let f of filesVm">
+            <td class="file" [title]="f.fileName">{{ f.fileName }}</td>
+            <td>{{ f.uploadDateIso | date:'medium' }}</td>
+            <td>{{ f.sizeBytes }}</td>
 
-        <td>
-          <button (click)="download(f)" [disabled]="loading">Download</button>
-        </td>
+            <td class="right">
+              <button type="button" class="btn small" (click)="download(f)" [disabled]="loading">
+                Download
+              </button>
+            </td>
 
-        <td class="overwrite-cell">
-          <input type="file" (change)="onOverwriteFileChange(f.id, $event)" />
-          <button (click)="overwrite(f)" [disabled]="!overwriteSelection[f.id] || loading">
-            Overwrite
-          </button>
-        </td>
+            <td class="overwrite-cell">
+              <input
+                #ow
+                class="file-input"
+                type="file"
+                (change)="onOverwriteFileChange(f.id, $event)"
+                [disabled]="loading"
+              />
+              <button type="button" class="btn small outline" (click)="ow.click()" [disabled]="loading">
+                Choose
+              </button>
+              <button
+                type="button"
+                class="btn small"
+                (click)="overwrite(f)"
+                [disabled]="!overwriteSelection[f.id] || loading"
+              >
+                Overwrite
+              </button>
+            </td>
 
-        <td>
-          <button class="danger" (click)="delete(f.id)" [disabled]="loading">
-            Delete
-          </button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+            <td class="right">
+              <button type="button" class="btn small danger" (click)="delete(f.id)" [disabled]="loading">
+                Delete
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
 </section>

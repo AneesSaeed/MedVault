@@ -1,28 +1,51 @@
 <div class="page">
-  <h2>Mes médecins</h2>
+  <div class="page-head">
+    <div>
+      <h2>Mes médecins</h2>
+      <p class="hint">Gérez la liste des médecins qui peuvent accéder à vos fichiers.</p>
+    </div>
 
-  <div *ngIf="loading">Chargement…</div>
+    <button class="btn primary" (click)="openAddDoctor()" [disabled]="loading">
+      Ajouter un médecin
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="muted">Chargement…</div>
   <div *ngIf="message" class="msg success">{{ message }}</div>
   <div *ngIf="error" class="msg error">{{ error }}</div>
 
-  <ul class="doctors" *ngIf="!loading && doctors.length">
-    <li *ngFor="let d of doctors" class="doctor">
+  <ul class="cards" *ngIf="!loading && doctors.length">
+    <li *ngFor="let d of doctors" class="card">
+      <div class="avatar" aria-hidden="true">
+        {{ (d.firstName?.trim() || d.lastName?.trim() || '?').charAt(0).toUpperCase() }}
+      </div>
+
       <div class="info">
         <div class="name">{{ d.firstName }} {{ d.lastName }}</div>
         <div class="org">{{ d.medicalOrganization }}</div>
         <div class="email">{{ d.email }}</div>
       </div>
-      <button 
-        class="btn-remove" 
-        (click)="removeDoctor(d)" 
-        [disabled]="removingId===d.doctorId">
+
+      <button
+        class="btn danger"
+        (click)="removeDoctor(d)"
+        [disabled]="removingId===d.doctorId"
+      >
         {{ removingId===d.doctorId ? 'Suppression…' : 'Retirer' }}
       </button>
     </li>
   </ul>
 
   <div *ngIf="!loading && !doctors.length" class="empty">
-    Vous n'avez pas encore ajouté de médecin.
-    <a routerLink="/doctors">Rechercher un médecin</a>
+    <div>Vous n'avez pas encore ajouté de médecin.</div>
+    <button class="btn outline" (click)="openAddDoctor()">Ajouter un médecin</button>
   </div>
 </div>
+
+<app-base-modal
+  *ngIf="modalOpen"
+  [title]="modalTitle"
+  [component]="modalComponent"
+  [data]="modalData"
+  (closed)="onModalClosed($event)"
+></app-base-modal>

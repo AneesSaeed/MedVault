@@ -3,6 +3,21 @@ import { Injectable, inject } from "@angular/core";
 import { environment } from "../../../environments/environment";
 import { LoggingService } from './logging.service';
 
+export type MeResponse = {
+  userId: string;
+
+  // doctor cleartext
+  firstName: string | null;
+  lastName: string | null;
+
+  // patient encrypted fields
+  firstNameEncBase64: string | null;
+  lastNameEncBase64: string | null;
+
+  // patient wrapped AES key (base64)
+  symmetricKeyEncBase64: string | null;
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -32,13 +47,6 @@ export class UserService {
   }
 }
 
-export interface MeResponse {
-  keycloakId: string;
-  userId?: string;
-  role: 'PATIENT' | 'DOCTOR';
-  firstName?: string;
-  lastName?: string;
-}
 
 export interface CreatePatientDTO {
   // SÉCURITÉ: TOUS les champs doivent être chiffrés pour protéger la vie privée du patient

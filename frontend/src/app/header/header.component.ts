@@ -5,7 +5,8 @@ import { UserContextService } from '../core/services/user-context.service';
 @Component({
   selector: 'app-header',
   templateUrl: './header.component.html',
-  styleUrls: ['./header.component.scss']
+  styleUrls: ['./header.component.scss'],
+  standalone: false
 })
 export class HeaderComponent {
 
@@ -19,15 +20,15 @@ export class HeaderComponent {
   }
 
   get email() {
-    return this.auth.email;
+    return this.auth.email; // token
   }
 
   get firstName() {
-    return this.auth.firstName;
+    return this.userContext.firstName; // db
   }
 
   get lastName() {
-    return this.auth.lastName;
+    return this.userContext.lastName; // db
   }
 
   get role() {
