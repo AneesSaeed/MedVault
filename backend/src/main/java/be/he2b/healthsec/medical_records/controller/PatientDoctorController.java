@@ -5,8 +5,10 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
 
 import be.he2b.healthsec.medical_records.dto.AddDoctorToPatientDTO;
 import be.he2b.healthsec.medical_records.dto.DoctorInfoDTO;
@@ -28,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/patient-doctor")
 @RequiredArgsConstructor
+@Validated
 public class PatientDoctorController {
     private final PatientDoctorService patientDoctorService;
     private final UserService userService;
@@ -61,6 +66,7 @@ public class PatientDoctorController {
      * - Un médecin qui a une relation PatientDoctor avec ce patient
      */
     @GetMapping("/patient/{patientId}/public-key")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getPatientPublicKey(@AuthenticationPrincipal Jwt jwt,
                                                  @PathVariable String patientId) {
         String keycloakId = jwt.getSubject();
@@ -110,6 +116,7 @@ public class PatientDoctorController {
     }
 
     @GetMapping("/my-doctors/keys")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> myDoctorsWithKeys(@AuthenticationPrincipal Jwt jwt) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/patient-doctor/my-doctors/keys", keycloakId);
@@ -162,9 +169,10 @@ public class PatientDoctorController {
      * Selon l'énoncé : "A patient can add or remove a doctor to his list of appointed doctors."
      */
     @PostMapping("/add")
+        @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> addDoctorToPatient(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestBody AddDoctorToPatientDTO dto) {
+            @Valid @RequestBody AddDoctorToPatientDTO dto) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("POST", "/api/patient-doctor/add", keycloakId);
         
@@ -209,6 +217,7 @@ public class PatientDoctorController {
      * Récupère la liste des médecins associés au patient actuel.
      */
     @GetMapping("/my-doctors")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getMyDoctors(@AuthenticationPrincipal Jwt jwt) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/patient-doctor/my-doctors", keycloakId);
@@ -243,6 +252,7 @@ public class PatientDoctorController {
      * Retourne les IDs des patients + données chiffrées (jamais déchiffré côté serveur).
      */
     @GetMapping("/my-patients")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getMyPatients(@AuthenticationPrincipal Jwt jwt) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/patient-doctor/my-patients", keycloakId);

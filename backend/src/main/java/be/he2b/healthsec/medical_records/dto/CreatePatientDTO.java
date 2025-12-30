@@ -1,5 +1,6 @@
 package be.he2b.healthsec.medical_records.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,27 +18,32 @@ public class CreatePatientDTO {
     /**
      * Prénom du patient chiffré avec sa clé AES, encodé en Base64.
      */
+    @NotBlank(message = "firstNameEncBase64 is required")
     private String firstNameEncBase64;
     
     /**
      * Nom du patient chiffré avec sa clé AES, encodé en Base64.
      */
+    @NotBlank(message = "lastNameEncBase64 is required")
     private String lastNameEncBase64;
     
     /**
      * Email du patient chiffré avec sa clé AES, encodé en Base64.
      */
+    @NotBlank(message = "emailEncBase64 is required")
     private String emailEncBase64;
     
     /**
      * Date de naissance du patient chiffrée avec sa clé AES, encodée en Base64.
      */
+    @NotBlank(message = "dateOfBirthEncBase64 is required")
     private String dateOfBirthEncBase64;
 
     /**
      * Clé publique RSA de l'utilisateur en format PEM.
      * Cette clé sera utilisée pour chiffrer la clé AES du patient.
      */
+    @NotBlank(message = "publicKeyPEM is required")
     private String publicKeyPEM;
 
     /**
@@ -49,5 +55,6 @@ public class CreatePatientDTO {
      * 
      * Format: RSA-OAEP encrypted AES-256 key, Base64 encoded
      */
+    @NotBlank(message = "symmetricKeyEncBase64 is required")
     private String symmetricKeyEncBase64;
 }

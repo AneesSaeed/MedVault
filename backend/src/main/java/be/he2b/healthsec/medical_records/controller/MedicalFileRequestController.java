@@ -9,9 +9,13 @@ import be.he2b.healthsec.medical_records.repository.UserRepository;
 import be.he2b.healthsec.medical_records.service.MedicalFileRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -20,6 +24,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
+@Validated
 public class MedicalFileRequestController {
 
     private final MedicalFileRequestService service;
@@ -30,9 +35,10 @@ public class MedicalFileRequestController {
      * DOCTOR: créer une demande pour un patient.
      */
     @PostMapping("/patient/{patientId}/file-requests")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> createRequest(@AuthenticationPrincipal Jwt jwt,
                                                 @PathVariable("patientId") UUID patientId,
-                                                @RequestBody CreatePendingMedicalFileDTO dto) {
+                                                @Valid @RequestBody CreatePendingMedicalFileDTO dto) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("POST", "/api/patient/" + patientId + "/file-requests", keycloakId);
         
@@ -59,6 +65,7 @@ public class MedicalFileRequestController {
      * PATIENT: lister ses demandes en attente.
      */
     @GetMapping("/patient/me/file-requests")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<PendingMedicalFileInfoDTO>> listMyRequests(@AuthenticationPrincipal Jwt jwt) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/patient/me/file-requests", keycloakId);
@@ -83,6 +90,7 @@ public class MedicalFileRequestController {
      * PATIENT: rejeter (supprimer) une demande.
      */
     @DeleteMapping("/patient/file-requests/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteRequest(@AuthenticationPrincipal Jwt jwt,
                                               @PathVariable("id") UUID requestId) {
         String keycloakId = jwt.getSubject();

@@ -1,17 +1,24 @@
 package be.he2b.healthsec.medical_records.config;
 
 import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity // tell Spring that this class defines the security rules for the app
+@EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final RateLimitingFilter rateLimitingFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -28,7 +35,8 @@ public class SecurityConfig {
             )
             .oauth2ResourceServer(oauth2 -> oauth2 // This tells Spring that your server is a resource server using JWTs for authentication
                 .jwt(jwt -> {})
-            );
+            )
+            .addFilterAfter(rateLimitingFilter, AuthorizationFilter.class);
 
         return http.build();
     }
