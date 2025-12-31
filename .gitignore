@@ -72,7 +72,13 @@ replay_pid*
 # End of https://www.toptal.com/developers/gitignore/api/angular,java
 
 
-.env*
+# Environment files
+# NOTE: .env is intentionally tracked for this project (development setup)
+# .env.example files can be tracked as templates
+.env.local
+.env.*.local
+.env.production
+.env.staging
 
 certs/
 *.pem

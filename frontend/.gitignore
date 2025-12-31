@@ -45,9 +45,3 @@ Thumbs.db
 *.md
 !README.md
 *.pdf
-b
-
-# Documentation
-*.md
-!README.md
-*.pdf

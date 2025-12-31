@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { UserService } from '../core/services/user.service';
@@ -13,19 +13,31 @@ import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { PatientDataService } from '../core/services/patient-data.service';
 import { PatientData } from '../core/models/patient-data.model';
 
-type MedicalFileVM = MedicalFile & {
+interface MedicalFileVM extends MedicalFile {
   fileName: string;
   uploadDateIso: string;
-};
+}
 
 
+import { CommonModule } from '@angular/common';
 @Component({
-    selector: 'app-home',
-    templateUrl: './home.component.html',
-    styleUrls: ['./home.component.scss'],
-    standalone: false
+  selector: 'app-home',
+  templateUrl: './home.component.html',
+  styleUrls: ['./home.component.scss'],
+  standalone: true,
+  imports: [CommonModule]
 })
 export class HomeComponent implements OnInit {
+  private readonly userService = inject(UserService);
+  public readonly userContext = inject(UserContextService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly medicalFilesApi = inject(MedicalFilesApi);
+  private readonly patientDoctorService = inject(PatientDoctorService);
+  private readonly crypto = inject(CryptoService);
+  private readonly patientDataService = inject(PatientDataService);
+  private readonly keyStore = inject(KeyStoreService);
+
   files: MedicalFile[] = [];
   loading = false;
   error: string | null = null;
@@ -39,18 +51,6 @@ export class HomeComponent implements OnInit {
   patientData: PatientData | null = null;
   patientDataLoading = false;
   patientDataError: string | null = null;
-
-  constructor(
-    private userService: UserService,
-    public userContext: UserContextService,
-    private auth: AuthService,
-    private router: Router,
-    private medicalFilesApi: MedicalFilesApi,
-    private patientDoctorService: PatientDoctorService,
-    private crypto: CryptoService,
-    private patientDataService: PatientDataService,
-    private keyStore: KeyStoreService
-  ) {}
 
   get role(): 'PATIENT' | 'DOCTOR' | string {
     return this.userContext.role ?? 'Loading...';
@@ -112,9 +112,10 @@ export class HomeComponent implements OnInit {
       }
 
       this.patientData = await this.patientDataService.getPatientData(userId, this.keyId);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to load patient data:', e);
-      this.patientDataError = e?.message || 'Failed to load patient data';
+      const error = e as { message?: string };
+      this.patientDataError = error?.message || 'Failed to load patient data';
     } finally {
       this.patientDataLoading = false;
     }
@@ -160,9 +161,10 @@ export class HomeComponent implements OnInit {
           }
 
           this.filesVm = vm;
-        } catch (e: any) {
+        } catch (e: unknown) {
           this.filesVm = [];
-          this.error = e?.message || 'Failed to decrypt file list';
+          const error = e as { message?: string };
+          this.error = error?.message || 'Failed to decrypt file list';
         } finally {
           this.loading = false;
         }
@@ -259,9 +261,10 @@ export class HomeComponent implements OnInit {
             this.selectedNewFile = null;
             this.loading = false;
             this.refresh();
-          } catch (e: any) {
+          } catch (e: unknown) {
             // upload succeeded but sharing failed => doctor won't see it until sharing is fixed
-            this.error = e?.message || 'Uploaded, but failed to share keys with doctors';
+            const error = e as { message?: string };
+            this.error = error?.message || 'Uploaded, but failed to share keys with doctors';
             this.loading = false;
             this.refresh();
           }
@@ -271,8 +274,9 @@ export class HomeComponent implements OnInit {
           this.loading = false;
         },
       });
-    } catch (e: any) {
-      this.error = e?.message || 'Upload failed';
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      this.error = error?.message || 'Upload failed';
       this.loading = false;
     }
   }
@@ -348,8 +352,9 @@ export class HomeComponent implements OnInit {
           this.loading = false;
         },
       });
-    } catch (e: any) {
-      this.error = e?.message || 'Overwrite failed';
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      this.error = error?.message || 'Overwrite failed';
       this.loading = false;
     }
   }
@@ -413,8 +418,9 @@ export class HomeComponent implements OnInit {
               a.click();
 
               URL.revokeObjectURL(url);
-            } catch (e: any) {
-              this.error = e?.message || 'Failed to decrypt downloaded file';
+            } catch (e: unknown) {
+              const error = e as { message?: string };
+              this.error = error?.message || 'Failed to decrypt downloaded file';
             } finally {
               this.loading = false;
             }
@@ -424,8 +430,9 @@ export class HomeComponent implements OnInit {
             this.loading = false;
           },
         });
-      } catch (e: any) {
-        this.error = e?.message || 'Download failed';
+      } catch (e: unknown) {
+        const error = e as { message?: string };
+        this.error = error?.message || 'Download failed';
         this.loading = false;
       }
     })();

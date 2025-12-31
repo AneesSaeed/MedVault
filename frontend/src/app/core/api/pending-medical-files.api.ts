@@ -55,11 +55,11 @@ export class PendingMedicalFilesApi {
         map((text) => {
           // Backend may return JSON or plain text; tolerate both to avoid JSON parse SyntaxError
           try {
-            const parsed = JSON.parse(text as unknown as string);
+            const parsed = JSON.parse(text as unknown as string) as { id?: string };
             if (parsed && typeof parsed === 'object' && 'id' in parsed) {
-              return { id: (parsed as any).id ?? null };
+              return { id: parsed.id ?? null };
             }
-          } catch (e) {
+          } catch {
             // not JSON, fall back to plain text
           }
           return { id: text ? String(text) : null };

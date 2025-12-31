@@ -1,27 +1,63 @@
-# Frontend
+# Frontend - Secure Medical Records
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 16.2.16.
+Angular frontend application for managing encrypted medical records with Keycloak authentication.
 
-## Development server
+## Features
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+- **Keycloak Authentication**: Single Sign-On (SSO) with WebAuthn support
+- **Client-Side Encryption**: All medical data encrypted using Web Crypto API (AES-GCM, RSA-OAEP)
+- **Role-Based Access**: Patient and Doctor roles with different permissions
+- **Medical Records Management**: Upload, view, and share encrypted medical files
+- **Patient-Doctor Relationships**: Secure sharing of medical data between patients and doctors
+- **Centralized Logging**: Integration with ELK Stack (Logstash) for audit logs
 
-## Code scaffolding
+## Development
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+### Prerequisites
 
-## Build
+- Node.js 20+
+- npm or yarn
+
+### Setup
+
+```bash
+npm install
+```
+
+### Development Server
+
+Run `ng serve` for a dev server. Navigate to `https://localhost/`. The application will automatically reload if you change any of the source files.
+
+**Note:** The application requires HTTPS and is served through Nginx reverse proxy in production.
+
+### Build
 
 Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
 
-## Running unit tests
+### Running Unit Tests
 
 Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
 
-## Running end-to-end tests
+### Linting
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+Run `ng lint` to check code quality, or `ng lint --fix` to automatically fix issues.
 
-## Further help
+## Architecture
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+- **Components**: Standalone Angular components
+- **Services**: Core services for authentication, encryption, API calls
+- **Models**: TypeScript interfaces for data models
+- **Utils**: Utility functions (base64, sanitization)
+- **Keycloak Integration**: Custom factory for Keycloak initialization
+
+## Security
+
+- All sensitive data encrypted client-side before transmission
+- Private keys stored in browser localStorage (never sent to server)
+- TLS/HTTPS for all communications
+- Content Security Policy (CSP) headers
+- Inactivity timeout for automatic logout
+
+## Further Help
+
+For more information about Angular CLI, use `ng help` or check the [Angular CLI Overview](https://angular.io/cli) page.

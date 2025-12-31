@@ -1,7 +1,11 @@
 package be.he2b.healthsec.medical_records.service.keycloak;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -91,6 +95,8 @@ public class KeycloakAdminService {
         return token.access_token();
     }
 
-    public record KcTokenResponse(String access_token) {}
-    public record KcRoleRep(String id, String name) {}
+    public record KcTokenResponse(String access_token) {
+    }
+    public record KcRoleRep(String id, String name) {
+    }
 }

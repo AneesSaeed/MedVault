@@ -2,8 +2,16 @@ package be.he2b.healthsec.medical_records.service;
 
 import be.he2b.healthsec.medical_records.dto.CreatePendingMedicalFileDTO;
 import be.he2b.healthsec.medical_records.dto.PendingMedicalFileInfoDTO;
-import be.he2b.healthsec.medical_records.model.*;
-import be.he2b.healthsec.medical_records.repository.*;
+import be.he2b.healthsec.medical_records.model.Doctor;
+import be.he2b.healthsec.medical_records.model.Patient;
+import be.he2b.healthsec.medical_records.model.PatientDoctorId;
+import be.he2b.healthsec.medical_records.model.PendingMedicalFileRequest;
+import be.he2b.healthsec.medical_records.model.User;
+import be.he2b.healthsec.medical_records.repository.DoctorRepository;
+import be.he2b.healthsec.medical_records.repository.PatientDoctorRepository;
+import be.he2b.healthsec.medical_records.repository.PatientRepository;
+import be.he2b.healthsec.medical_records.repository.PendingMedicalFileRequestRepository;
+import be.he2b.healthsec.medical_records.repository.UserRepository;
 import be.he2b.healthsec.medical_records.logging.LoggingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -132,12 +140,16 @@ public class MedicalFileRequestService {
     }
 
     private static byte[] safeDecode(String base64) {
-        if (base64 == null || base64.isEmpty()) return null;
+        if (base64 == null || base64.isEmpty()) {
+            return null;
+        }
         return Base64.getDecoder().decode(base64);
     }
 
     private static String encode(byte[] bytes) {
-        if (bytes == null) return null;
+        if (bytes == null) {
+            return null;
+        }
         return Base64.getEncoder().encodeToString(bytes);
     }
 }

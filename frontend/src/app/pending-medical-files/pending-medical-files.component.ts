@@ -1,21 +1,23 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { AuthService } from '../core/services/auth.service';
 import { PendingFileHelper, DecryptedPendingFile } from '../core/services/pending-file.helper';
 import { LoggingService } from '../core/services/logging.service';
 import { PatientDoctorService } from '../core/services/patient-doctor.service';
 import { sanitizeFilename } from '../core/utils/sanitize.util';
 
-type DoctorLite = {
+interface DoctorLite {
   doctorId: string;
   firstName: string;
   lastName: string;
-};
+}
 
 @Component({
   selector: 'app-pending-medical-files',
   templateUrl: './pending-medical-files.component.html',
   styleUrls: ['./pending-medical-files.component.scss'],
-  standalone: false
+  standalone: true,
+  imports: [CommonModule]
 })
 export class PendingMedicalFilesComponent implements OnInit {
   loading = false;
@@ -30,14 +32,13 @@ export class PendingMedicalFilesComponent implements OnInit {
   acceptingId: string | null = null;
 
   // Doctor info for display (cached)
-  doctorInfo: Map<string, { firstName: string; lastName: string }> = new Map();
+  doctorInfo = new Map<string, { firstName: string; lastName: string }>();
 
-  constructor(
-    private auth: AuthService,
-    private pendingFileHelper: PendingFileHelper,
-    private logger: LoggingService,
-    private patientDoctorService: PatientDoctorService
-  ) {}
+
+  private auth = inject(AuthService);
+  private pendingFileHelper = inject(PendingFileHelper);
+  private logger = inject(LoggingService);
+  private patientDoctorService = inject(PatientDoctorService);
 
   async ngOnInit(): Promise<void> {
     await this.loadPendingRequests();
@@ -61,9 +62,11 @@ export class PendingMedicalFilesComponent implements OnInit {
       await this.resolveDoctorNames();
 
       this.logger.info('Loaded pending requests', { count: this.pendingFiles.length }, 'PendingMedicalFilesComponent');
-    } catch (e: any) {
+    } catch (e: unknown) {
       this.logger.error('Error loading pending requests', e, {}, 'PendingMedicalFilesComponent');
-      this.error = e?.message || 'Impossible de charger les demandes';
+      this.error = (typeof e === 'object' && e && 'message' in e && typeof (e as { message: unknown }).message === 'string')
+        ? (e as { message: string }).message
+        : 'Impossible de charger les demandes';
     } finally {
       this.loading = false;
     }
@@ -87,11 +90,13 @@ export class PendingMedicalFilesComponent implements OnInit {
         }
       }
       this.doctorInfo = map;
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Do not fail the page for name resolution issues
       this.logger.debug(
         'Failed to resolve doctor names for pending files',
-        { message: e?.message || e },
+        { message: (typeof e === 'object' && e && 'message' in e && typeof (e as { message: unknown }).message === 'string')
+            ? (e as { message: string }).message
+            : String(e) },
         'PendingMedicalFilesComponent'
       );
     }
@@ -136,8 +141,10 @@ export class PendingMedicalFilesComponent implements OnInit {
         { fileId: file.id, fileName: file.fileName },
         'PendingMedicalFilesComponent'
       );
-    } catch (e: any) {
-      this.error = e?.message || 'Erreur lors de la visualisation';
+    } catch (e: unknown) {
+      this.error = (typeof e === 'object' && e && 'message' in e && typeof (e as { message: unknown }).message === 'string')
+        ? (e as { message: string }).message
+        : 'Erreur lors de la visualisation';
       this.logger.error('View error', e, { fileId: file.id }, 'PendingMedicalFilesComponent');
     } finally {
       this.viewingId = null;
@@ -172,8 +179,10 @@ export class PendingMedicalFilesComponent implements OnInit {
       );
 
       this.pendingFiles = this.pendingFiles.filter(f => f.id !== file.id);
-    } catch (e: any) {
-      this.error = e?.message || 'Erreur lors du rejet';
+    } catch (e: unknown) {
+      this.error = (typeof e === 'object' && e && 'message' in e && typeof (e as { message: unknown }).message === 'string')
+        ? (e as { message: string }).message
+        : 'Erreur lors du rejet';
       this.logger.error('Reject error', e, { fileId: file.id }, 'PendingMedicalFilesComponent');
     } finally {
       this.rejectingId = null;
@@ -216,8 +225,10 @@ export class PendingMedicalFilesComponent implements OnInit {
       );
 
       this.pendingFiles = this.pendingFiles.filter(f => f.id !== file.id);
-    } catch (e: any) {
-      this.error = e?.message || "Erreur lors de l'acceptation";
+    } catch (e: unknown) {
+      this.error = (typeof e === 'object' && e && 'message' in e && typeof (e as { message: unknown }).message === 'string')
+        ? (e as { message: string }).message
+        : "Erreur lors de l'acceptation";
       this.logger.error('Accept error', e, { fileId: file.id }, 'PendingMedicalFilesComponent');
     } finally {
       this.acceptingId = null;

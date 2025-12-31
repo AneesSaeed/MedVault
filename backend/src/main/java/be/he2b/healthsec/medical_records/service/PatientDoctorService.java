@@ -332,8 +332,8 @@ public class PatientDoctorService {
         List<Doctor> doctors = doctorRepository.findAll();
         List<DoctorInfoDTO> result = doctors.stream()
             .filter(doctor -> 
-                doctor.getFirstName().toLowerCase().contains(lowerSearch) ||
-                doctor.getLastName().toLowerCase().contains(lowerSearch)
+                doctor.getFirstName().toLowerCase().contains(lowerSearch)
+                || doctor.getLastName().toLowerCase().contains(lowerSearch)
             )
             .map(doctor -> {
                 DoctorInfoDTO dto = new DoctorInfoDTO();

@@ -1,0 +1,6 @@
+# Logstash configuration for monitoring and license checking
+# Disable xpack monitoring to avoid HTTP connection issues
+# The licensechecker has issues with HTTPS configuration
+# Monitoring can be handled via Elastic Agent in production
+
+xpack.monitoring.enabled: false

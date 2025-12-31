@@ -21,36 +21,54 @@
     </button>
   </div>
 
-  <div *ngIf="message" class="msg success">{{ message }}</div>
-  <div *ngIf="error" class="msg error">{{ error }}</div>
-  <div *ngIf="loading" class="muted">Chargement…</div>
+  @if (message) {
+    <div class="msg success">{{ message }}</div>
+  }
+  @if (error) {
+    <div class="msg error">{{ error }}</div>
+  }
+  @if (loading) {
+    <div class="muted">Chargement…</div>
+  }
 
-  <ul class="results" *ngIf="!loading && doctors.length">
-    <li *ngFor="let d of doctors" class="result">
-      <div class="avatar" aria-hidden="true">
-        {{ (d.firstName?.trim() || d.lastName?.trim() || '?').charAt(0).toUpperCase() }}
-      </div>
+  @if (!loading && doctors.length) {
+    <ul class="results">
+      @for (d of doctors; track d.doctorId) {
+        <li class="result">
+          <div class="avatar" aria-hidden="true">
+            {{ (d.firstName.trim() || d.lastName.trim() || '?').charAt(0).toUpperCase() }}
+          </div>
 
-      <div class="info">
-        <div class="name">{{ d.firstName }} {{ d.lastName }}</div>
-        <div class="org">{{ d.medicalOrganization }}</div>
+          <div class="info">
+            <div class="name">{{ d.firstName }} {{ d.lastName }}</div>
+            <div class="org">{{ d.medicalOrganization }}</div>
 
-        <div *ngIf="isAlreadyAdded(d.doctorId)" class="badge">
-          Already added
-        </div>
-      </div>
+            @if (isAlreadyAdded(d.doctorId)) {
+              <div class="badge">
+                Already added
+              </div>
+            }
+          </div>
 
-      <button
-        class="btn"
-        (click)="addDoctor(d)"
-        [disabled]="addingId===d.doctorId || isAlreadyAdded(d.doctorId)"
-      >
-        <ng-container *ngIf="addingId===d.doctorId">Ajout…</ng-container>
-        <ng-container *ngIf="addingId!==d.doctorId && !isAlreadyAdded(d.doctorId)">Ajouter</ng-container>
-        <ng-container *ngIf="addingId!==d.doctorId && isAlreadyAdded(d.doctorId)">Ajouté</ng-container>
-      </button>
-    </li>
-  </ul>
+          <button
+            class="btn"
+            (click)="addDoctor(d)"
+            [disabled]="addingId===d.doctorId || isAlreadyAdded(d.doctorId)"
+          >
+            @if (addingId===d.doctorId) {
+              <ng-container>Ajout…</ng-container>
+            } @else if (!isAlreadyAdded(d.doctorId)) {
+              <ng-container>Ajouter</ng-container>
+            } @else {
+              <ng-container>Ajouté</ng-container>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  }
 
-  <div *ngIf="!loading && !doctors.length" class="empty">Aucun médecin trouvé.</div>
+  @if (!loading && !doctors.length) {
+    <div class="empty">Aucun médecin trouvé.</div>
+  }
 </div>

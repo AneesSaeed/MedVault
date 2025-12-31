@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 
 /**
@@ -55,7 +55,16 @@ export class LoggingService {
     if (!this.shouldLog(entry.level)) return;
 
     // In production, use HttpClient; in dev, also log to console for debugging
-    this.http.post(this.logstashUrl, entry).subscribe({
+    // Logstash HTTP input responds with "ok" (text), so we use responseType: 'text' to avoid JSON parsing errors
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    // Use explicit typing to tell TypeScript we want text response, not JSON
+    this.http.post<string>(this.logstashUrl, entry, { 
+      headers,
+      responseType: 'text' as 'json' // Type assertion needed because Angular's types are strict
+    }).subscribe({
+      next: () => {
+        // Success - Logstash received the log (response is "ok" text, which is fine)
+      },
       error: (err) => {
         // Logstash down? Fallback to console (don't recurse!)
         if (!environment.production) {

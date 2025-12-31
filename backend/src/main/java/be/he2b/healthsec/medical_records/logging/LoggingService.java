@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class LoggingService {
-  private static final Logger logger = LoggerFactory.getLogger(LoggingService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoggingService.class);
 
   @Getter
   public enum LogLevel {
@@ -47,70 +47,70 @@ public class LoggingService {
    * Log general info message with metadata
    */
   public void info(String message, java.util.Map<String, ?> metadata) {
-    logger.info("[{}] {}", "INFO", formatWithMetadata(message, metadata));
+    LOGGER.info("[{}] {}", "INFO", formatWithMetadata(message, metadata));
   }
 
   /**
    * Log info message
    */
   public void info(String message) {
-    logger.info("{}", message);
+    LOGGER.info("{}", message);
   }
 
   /**
    * Log debug message with metadata
    */
   public void debug(String message, java.util.Map<String, ?> metadata) {
-    logger.debug("[{}] {}", "DEBUG", formatWithMetadata(message, metadata));
+    LOGGER.debug("[{}] {}", "DEBUG", formatWithMetadata(message, metadata));
   }
 
   /**
    * Log debug message
    */
   public void debug(String message) {
-    logger.debug("{}", message);
+    LOGGER.debug("{}", message);
   }
 
   /**
    * Log warning message with metadata
    */
   public void warn(String message, java.util.Map<String, ?> metadata) {
-    logger.warn("[{}] {}", "WARN", formatWithMetadata(message, metadata));
+    LOGGER.warn("[{}] {}", "WARN", formatWithMetadata(message, metadata));
   }
 
   /**
    * Log warning message
    */
   public void warn(String message) {
-    logger.warn("{}", message);
+    LOGGER.warn("{}", message);
   }
 
   /**
    * Log error with exception and metadata
    */
   public void error(String message, Exception e, java.util.Map<String, ?> metadata) {
-    logger.error("[{}] {} | Metadata: {}", "ERROR", message, metadata, e);
+    LOGGER.error("[{}] {} | Metadata: {}", "ERROR", message, metadata, e);
   }
 
   /**
    * Log error with exception
    */
   public void error(String message, Exception e) {
-    logger.error("[{}] {}", "ERROR", message, e);
+    LOGGER.error("[{}] {}", "ERROR", message, e);
   }
 
   /**
    * Log error message
    */
   public void error(String message) {
-    logger.error("{}", message);
+    LOGGER.error("{}", message);
   }
 
   /**
    * Log critical/fatal error
    */
   public void fatal(String message, Exception e, java.util.Map<String, ?> metadata) {
-    logger.error("[FATAL] {} | Metadata: {}", message, metadata, e);
+    LOGGER.error("[FATAL] {} | Metadata: {}", message, metadata, e);
   }
 
   /**
@@ -127,7 +127,7 @@ public class LoggingService {
     auditMetadata.put("userId", userId);
     auditMetadata.put("severity", severity);
 
-    logger.warn(
+    LOGGER.warn(
         "[SECURITY] {} | User: {} | Severity: {} | Metadata: {}",
         eventType,
         userId,
@@ -144,21 +144,21 @@ public class LoggingService {
     actionMetadata.put("action", action);
     actionMetadata.put("userId", userId);
 
-    logger.info("[ACTION] {} | User: {} | Metadata: {}", action, userId, actionMetadata);
+    LOGGER.info("[ACTION] {} | User: {} | Metadata: {}", action, userId, actionMetadata);
   }
 
   /**
    * Log API request
    */
   public void logApiRequest(String method, String endpoint, String userId) {
-    logger.info("[API-REQUEST] {} {} | User: {}", method, endpoint, userId);
+    LOGGER.info("[API-REQUEST] {} {} | User: {}", method, endpoint, userId);
   }
 
   /**
    * Log API response with timing
    */
   public void logApiResponse(String method, String endpoint, int statusCode, long durationMs) {
-    logger.info("[API-RESPONSE] {} {} | Status: {} | Duration: {}ms", method, endpoint, statusCode, durationMs);
+    LOGGER.info("[API-RESPONSE] {} {} | Status: {} | Duration: {}ms", method, endpoint, statusCode, durationMs);
   }
 
   /**
@@ -170,7 +170,7 @@ public class LoggingService {
     cryptoMetadata.put("success", success);
     cryptoMetadata.put("userId", userId);
 
-    logger.info("[CRYPTO] {} | Success: {} | User: {} | Metadata: {}", operation, success, userId, cryptoMetadata);
+    LOGGER.info("[CRYPTO] {} | Success: {} | User: {} | Metadata: {}", operation, success, userId, cryptoMetadata);
   }
 
   /**

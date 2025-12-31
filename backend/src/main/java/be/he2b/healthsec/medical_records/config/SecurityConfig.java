@@ -1,8 +1,5 @@
 package be.he2b.healthsec.medical_records.config;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.ApplicationRunner;
-// ...existing code...
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.context.annotation.Bean;
@@ -18,7 +15,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,7 +32,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> {})
+            .cors(cors -> {
+            })
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 // onboarding endpoints: authenticated, but NOT role-gated (role assigned after)

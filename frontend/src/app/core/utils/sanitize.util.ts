@@ -1,4 +1,4 @@
-// Simple sanitizers to reduce XSS risk via filenames or text rendering
+// Simple sanitizer to reduce XSS risk via filenames in downloads
 
 export function sanitizeFilename(name: string): string {
   return (name || '')
@@ -6,8 +6,4 @@ export function sanitizeFilename(name: string): string {
     .replace(/[^\w\-. ]/g, '')
     .trim()
     .slice(0, 200) || 'download';
-}
-
-export function sanitizeText(text: string): string {
-  return (text || '').replace(/[<>]/g, '').trim();
 }
