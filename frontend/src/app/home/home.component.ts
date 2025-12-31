@@ -478,4 +478,10 @@ export class HomeComponent implements OnInit {
 
     return null;
   }
+
+  formatMB(bytes: number | null | undefined): string {
+    if (bytes == null || Number.isNaN(bytes)) return '—';
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(2)} MB`;
+  }
 }

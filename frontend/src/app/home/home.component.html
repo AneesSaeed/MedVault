@@ -73,8 +73,7 @@
                 <tr>
                   <td class="file" [title]="f.fileName">{{ f.fileName }}</td>
                   <td>{{ f.uploadDateIso | date:'medium' }}</td>
-                  <td>{{ f.sizeBytes }}</td>
-
+                  <td>{{ formatMB(f.sizeBytes) }}</td>
                   <td class="right">
                     <button type="button" class="btn small" (click)="download(f)" [disabled]="loading">
                       Download
