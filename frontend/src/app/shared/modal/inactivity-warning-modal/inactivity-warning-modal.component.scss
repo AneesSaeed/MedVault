@@ -1,0 +1,101 @@
+@use '../../../../styles/variables' as *;
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  width: min(460px, calc(100vw - 32px));
+  padding: 16px 16px 14px 16px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: $shadow-card;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.title {
+  font-weight: 800;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.78);
+  letter-spacing: 0.2px;
+}
+
+.timeout {
+  min-width: 72px;
+  text-align: right;
+  font-weight: 900;
+  font-size: 22px;
+  color: $color-danger;
+  letter-spacing: 0.2px;
+}
+
+.msg {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.68);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* Flat, clinical buttons */
+.btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.btn:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px $color-primary-light;
+}
+
+.btn.primary {
+  background: $color-primary;
+  color: $color-on-primary;
+
+  &:hover:not(:disabled) {
+    background: $color-primary-dark;
+  }
+}
+
+/* Outline danger: less “cartoon” than solid red */
+.btn.danger {
+  background: #fff;
+  color: $color-danger;
+  border-color: rgba(244, 67, 54, 0.25);
+
+  &:hover:not(:disabled) {
+    background: $color-danger-soft;
+    border-color: rgba(244, 67, 54, 0.35);
+  }
+}

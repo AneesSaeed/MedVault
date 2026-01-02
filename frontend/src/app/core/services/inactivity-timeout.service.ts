@@ -1,341 +1,166 @@
 import { Injectable, NgZone, inject } from '@angular/core';
-import { KeycloakService } from 'keycloak-angular';
+import { BehaviorSubject } from 'rxjs';
 import { LoggingService } from './logging.service';
+import { AuthService } from './auth.service';
 
-/**
- * Service de gestion du timeout d'inactivité
- * Déconnecte automatiquement l'utilisateur après 30 minutes d'inactivité
- * 
- * SECURITY: Implémentation de la recommandation du rapport de sécurité (Question 8)
- * Protège contre les attaques de data remanence en nettoyant la session inactive
- */
-@Injectable({
-  providedIn: 'root'
-})
+export type WarningState = { remainingSeconds: number };
+
+@Injectable({ providedIn: 'root' })
 export class InactivityTimeoutService {
-  private readonly INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes en millisecondes
-  private readonly WARNING_BEFORE_LOGOUT = 2 * 60 * 1000; //  2 minutes avant déconnexion
-  
+  private readonly INACTIVITY_TIMEOUT_MS = 1 * 60 * 1000;
+  private readonly WARNING_BEFORE_LOGOUT_MS = 30 * 1000;
+
   private timeoutId: number | null = null;
   private warningTimeoutId: number | null = null;
   private countdownIntervalId: number | null = null;
-  private lastActivityTime: number = Date.now();
-  private isLoggingOut = false; // Protection contre les déconnexions multiples
-  private modalElement: HTMLElement | null = null;
-  
-  private readonly keycloak = inject(KeycloakService);
+
+  private lastResetTime = Date.now();
+  private isLoggingOut = false;
+  private watching = false;
+
+  private readonly warningSubject = new BehaviorSubject<WarningState | null>(null);
+  readonly warning$ = this.warningSubject.asObservable();
+
   private readonly ngZone = inject(NgZone);
   private readonly logger = inject(LoggingService);
+  private readonly auth = inject(AuthService);
 
-  /**
-   * Démarre la surveillance de l'inactivité
-   * À appeler après login réussi
-   */
   startWatching(): void {
-    this.logger.logAction('INACTIVITY_TIMEOUT_STARTED', 'system', {
-      timeoutMinutes: this.INACTIVITY_TIMEOUT / 60000
-    }, 'InactivityTimeoutService');
+    if (this.watching) return;
+    this.watching = true;
 
-    // Écoute les événements d'activité utilisateur
+    this.isLoggingOut = false;
+
+    this.logger.logAction(
+      'INACTIVITY_TIMEOUT_STARTED',
+      'system',
+      { timeoutMinutes: this.INACTIVITY_TIMEOUT_MS / 60000 },
+      'InactivityTimeoutService'
+    );
+
     this.setupActivityListeners();
-    
-    // Démarre le timer
     this.resetTimer();
   }
 
-  /**
-   * Arrête la surveillance (lors du logout manuel)
-   */
   stopWatching(): void {
+    if (!this.watching) return;
+    this.watching = false;
+
     this.clearTimers();
     this.removeActivityListeners();
-    this.removeModal(); // Supprimer la modal si elle est affichée
-    this.isLoggingOut = false; // Réinitialiser le flag
-    
+    this.warningSubject.next(null);
+
     this.logger.logAction('INACTIVITY_TIMEOUT_STOPPED', 'system', {}, 'InactivityTimeoutService');
   }
 
-  /**
-   * Réinitialise le timer d'inactivité
-   * Appelé à chaque activité utilisateur
-   */
-  private resetTimer(): void {
-    this.clearTimers();
-    this.lastActivityTime = Date.now();
+  stayConnected(): void {
+    if (!this.watching || this.isLoggingOut) return;
+    this.warningSubject.next(null);
+    this.resetTimer();
+  }
 
-    // Timer principal (30 min)
+  logoutNow(): void {
+    if (!this.watching) return;
+    this.warningSubject.next(null);
+    void this.handleInactivityLogout();
+  }
+
+  private resetTimer(): void {
+    if (!this.watching || this.isLoggingOut) return;
+
+    this.clearTimers();
+    this.warningSubject.next(null);
+    this.lastResetTime = Date.now();
+
     this.ngZone.runOutsideAngular(() => {
       this.timeoutId = window.setTimeout(() => {
-        this.ngZone.run(() => this.handleInactivityLogout());
-      }, this.INACTIVITY_TIMEOUT);
+        this.ngZone.run(() => void this.handleInactivityLogout());
+      }, this.INACTIVITY_TIMEOUT_MS);
 
-      // Timer d'avertissement (28 min = 30 - 2)
+      const warningDelay = this.INACTIVITY_TIMEOUT_MS - this.WARNING_BEFORE_LOGOUT_MS;
       this.warningTimeoutId = window.setTimeout(() => {
         this.ngZone.run(() => this.showWarning());
-      }, this.INACTIVITY_TIMEOUT - this.WARNING_BEFORE_LOGOUT);
+      }, Math.max(0, warningDelay));
     });
   }
 
-  /**
-   * Affiche un avertissement avant déconnexion avec compteur qui descend
-   * IMPORTANT: Le timer principal (timeoutId) continue à tourner même si la modal est affichée.
-   * Si l'utilisateur ne répond pas, il sera déconnecté automatiquement quand le timer atteint le timeout.
-   */
   private showWarning(): void {
-    const timeRemainingSeconds = Math.ceil(this.WARNING_BEFORE_LOGOUT / 1000);
-    
-    this.logger.logAction('INACTIVITY_WARNING_SHOWN', 'system', {
-      timeRemainingSeconds
-    }, 'InactivityTimeoutService');
+    if (!this.watching || this.isLoggingOut) return;
+    if (this.warningSubject.value) return;
 
-    // Créer et afficher la modal avec compteur
-    this.createAndShowModal(timeRemainingSeconds);
-  }
+    const initialSeconds = Math.ceil(this.WARNING_BEFORE_LOGOUT_MS / 1000);
 
-  /**
-   * Crée et affiche une modal avec compteur qui descend
-   */
-  private createAndShowModal(initialSeconds: number): void {
-    // Supprimer la modal existante si elle existe
-    this.removeModal();
+    this.logger.logAction(
+      'INACTIVITY_WARNING_SHOWN',
+      'system',
+      { timeRemainingSeconds: initialSeconds },
+      'InactivityTimeoutService'
+    );
 
-    let remainingSeconds = initialSeconds;
+    this.warningSubject.next({ remainingSeconds: initialSeconds });
 
-    // Créer le backdrop
-    const backdrop = document.createElement('div');
-    backdrop.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
-      z-index: 10000;
-    `;
-
-    // Créer la modal
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 450px;
-      padding: 30px;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-      z-index: 10001;
-      text-align: center;
-    `;
-
-    // Compteur
-    const countdownElement = document.createElement('div');
-    countdownElement.id = 'inactivity-countdown';
-    countdownElement.style.cssText = `
-      font-size: 48px;
-      font-weight: bold;
-      color: #e74c3c;
-      margin: 20px 0;
-    `;
-    countdownElement.textContent = `${remainingSeconds}`;
-
-    // Message
-    const message = document.createElement('p');
-    message.style.cssText = `
-      font-size: 16px;
-      color: #333;
-      margin: 20px 0;
-      line-height: 1.5;
-    `;
-    message.textContent = 'Vous serez déconnecté automatiquement par mesure de sécurité.';
-
-    // Instructions
-    const instructions = document.createElement('p');
-    instructions.style.cssText = `
-      font-size: 14px;
-      color: #666;
-      margin: 10px 0 20px 0;
-    `;
-    instructions.innerHTML = '• Cliquez <strong>Rester connecté</strong> pour continuer<br>• Cliquez <strong>Déconnexion</strong> pour vous déconnecter maintenant';
-
-    // Boutons
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = `
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin-top: 20px;
-    `;
-
-    const stayButton = document.createElement('button');
-    stayButton.textContent = 'Rester connecté';
-    stayButton.style.cssText = `
-      padding: 12px 24px;
-      background: #27ae60;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    `;
-    stayButton.onmouseover = () => stayButton.style.background = '#229954';
-    stayButton.onmouseout = () => stayButton.style.background = '#27ae60';
-    stayButton.onclick = () => {
-      this.removeModal();
-      this.resetTimer();
-    };
-
-    const logoutButton = document.createElement('button');
-    logoutButton.textContent = 'Déconnexion';
-    logoutButton.style.cssText = `
-      padding: 12px 24px;
-      background: #e74c3c;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    `;
-    logoutButton.onmouseover = () => logoutButton.style.background = '#c0392b';
-    logoutButton.onmouseout = () => logoutButton.style.background = '#e74c3c';
-    logoutButton.onclick = () => {
-      this.removeModal();
-      this.handleInactivityLogout();
-    };
-
-    buttonContainer.appendChild(stayButton);
-    buttonContainer.appendChild(logoutButton);
-
-    modal.appendChild(countdownElement);
-    modal.appendChild(message);
-    modal.appendChild(instructions);
-    modal.appendChild(buttonContainer);
-
-    backdrop.appendChild(modal);
-    document.body.appendChild(backdrop);
-
-    this.modalElement = backdrop;
-
-    // Démarrer le compteur
+    // Countdown runs; do NOT treat incidental user clicks as activity anymore.
     this.countdownIntervalId = window.setInterval(() => {
-      remainingSeconds--;
-      countdownElement.textContent = `${remainingSeconds}`;
+      const current = this.warningSubject.value;
+      if (!current) return;
 
-      if (remainingSeconds <= 0) {
-        // Le compteur arrive à 0, fermer la modal et déconnecter
-        this.removeModal();
-        this.handleInactivityLogout();
+      const next = current.remainingSeconds - 1;
+
+      if (next <= 0) {
+        this.warningSubject.next(null);
+        void this.handleInactivityLogout();
+      } else {
+        this.warningSubject.next({ remainingSeconds: next });
       }
     }, 1000);
   }
 
-  /**
-   * Supprime la modal si elle existe
-   */
-  private removeModal(): void {
-    if (this.countdownIntervalId !== null) {
-      clearInterval(this.countdownIntervalId);
-      this.countdownIntervalId = null;
-    }
-
-    if (this.modalElement) {
-      this.modalElement.remove();
-      this.modalElement = null;
-    }
-  }
-
-  /**
-   * Déconnecte l'utilisateur après inactivité
-   * Protection contre les appels multiples (peut être appelé par le timer principal ou par l'utilisateur qui clique Annuler)
-   */
   private async handleInactivityLogout(): Promise<void> {
-    // Protection contre les déconnexions multiples
-    if (this.isLoggingOut) {
-      return;
-    }
+    if (this.isLoggingOut) return;
     this.isLoggingOut = true;
 
-    const inactiveMinutes = Math.floor((Date.now() - this.lastActivityTime) / 60000);
-    
-    this.logger.logSecurityEvent(
-      'INACTIVITY_LOGOUT',
-      'system',
-      'LOW',
-      {
-        inactiveMinutes,
-        reason: 'Automatic logout after inactivity timeout'
-      }
-    );
+    const inactiveMinutes = Math.floor((Date.now() - this.lastResetTime) / 60000);
 
-    try {
-      // Arrêter la surveillance
-      this.stopWatching();
-      
-      // Déconnexion Keycloak avec redirection directe vers la page de login
-      // Utiliser l'URL de logout avec id_token_hint pour éviter la page de confirmation Keycloak
-      const keycloakInstance = this.keycloak.getKeycloakInstance();
-      const idToken = keycloakInstance.idToken;
-      
-      if (idToken) {
-        // Utiliser l'URL de logout avec id_token_hint pour déconnexion automatique sans confirmation
-        const redirectUri = encodeURIComponent('https://localhost/');
-        window.location.href = `https://localhost/auth/realms/health-realm/protocol/openid-connect/logout?id_token_hint=${idToken}&post_logout_redirect_uri=${redirectUri}`;
-      } else {
-        // Pas de token, rediriger directement vers la page de login
-        window.location.href = 'https://localhost/auth/realms/health-realm/protocol/openid-connect/auth?client_id=public-client&redirect_uri=https://localhost/&response_type=code&scope=openid';
+    this.logger.logSecurityEvent('INACTIVITY_LOGOUT', 'system', 'LOW', {
+      inactiveMinutes,
+      reason: 'Automatic logout after inactivity timeout'
+    });
+
+    // Stop listeners/timers BEFORE redirect
+    this.stopWatching();
+
+    await this.auth.logout();
+  }
+
+  private setupActivityListeners(): void {
+    // Keep it “intentful”. No mousemove.
+    const events = ['keypress', 'click'];
+
+    this.ngZone.runOutsideAngular(() => {
+      for (const evt of events) {
+        // capture=true means it sees events very early
+        document.addEventListener(evt, this.activityHandler, true);
       }
-    } catch (error) {
-      this.logger.error('Error during inactivity logout', error);
-      // En cas d'erreur, rediriger directement vers la page de login Keycloak
-      window.location.href = 'https://localhost/auth/realms/health-realm/protocol/openid-connect/auth?client_id=public-client&redirect_uri=https://localhost/&response_type=code&scope=openid';
+    });
+  }
+
+  private removeActivityListeners(): void {
+    const events = ['keypress', 'click'];
+    for (const evt of events) {
+      document.removeEventListener(evt, this.activityHandler, true);
     }
   }
 
-  /**
-   * Configure les listeners d'activité utilisateur
-   */
-  private setupActivityListeners(): void {
-    // Liste des événements considérés comme "activité"
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
-    this.ngZone.runOutsideAngular(() => {
-      events.forEach(event => {
-        document.addEventListener(event, this.activityHandler, true);
-      });
-    });
-  }
-
-  /**
-   * Supprime les listeners d'activité
-   */
-  private removeActivityListeners(): void {
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
-    events.forEach(event => {
-      document.removeEventListener(event, this.activityHandler, true);
-    });
-  }
-
-  /**
-   * Handler appelé lors d'une activité utilisateur
-   */
   private activityHandler = (): void => {
-    // Throttle: ne réinitialise pas le timer plus d'une fois toutes les 10 secondes (TEMPORAIRE pour test)
-    const timeSinceLastActivity = Date.now() - this.lastActivityTime;
-    if (timeSinceLastActivity > 10000) { // 10 secondes (TEMPORAIRE pour test)
+    if (!this.watching || this.isLoggingOut) return;
+    if (this.warningSubject.value) return;
+
+    const timeSinceReset = Date.now() - this.lastResetTime;
+    if (timeSinceReset > 10_000) {
       this.ngZone.run(() => this.resetTimer());
     }
   };
 
-  /**
-   * Nettoie les timers
-   */
   private clearTimers(): void {
     if (this.timeoutId !== null) {
       clearTimeout(this.timeoutId);

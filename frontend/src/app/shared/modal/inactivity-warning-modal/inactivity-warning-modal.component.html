@@ -1,0 +1,17 @@
+<ng-container *ngIf="warning$ | async as w">
+  <div class="backdrop" role="dialog" aria-modal="true" aria-label="Inactivity warning">
+    <div class="modal" role="document">
+      <div class="top">
+        <div class="title">Session inactive</div>
+        <div class="timeout" aria-live="polite">{{ w.remainingSeconds }}s</div>
+      </div>
+
+      <p class="msg">Déconnexion automatique par mesure de sécurité.</p>
+
+      <div class="actions">
+        <button type="button" class="btn primary" (click)="stay($event)">Rester connecté</button>
+        <button type="button" class="btn danger" (click)="logout($event)">Déconnexion</button>
+      </div>
+    </div>
+  </div>
+</ng-container>
