@@ -202,8 +202,8 @@ services:
       - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/internal/ca.crt
       # SECURITY NOTE: Default passwords "changeme" are for DEVELOPMENT ONLY.
       # In production, always set ELASTIC_PASSWORD and KIBANA_PASSWORD via .env file.
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
-      - KIBANA_SYSTEM_PASSWORD=${KIBANA_PASSWORD:-changeme}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - KIBANA_SYSTEM_PASSWORD=${KIBANA_PASSWORD}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     # NOTE: Port exposed for development/debugging. Remove in production or restrict access.
     ports:
@@ -212,7 +212,7 @@ services:
       - elasticsearch_data:/usr/share/elasticsearch/data
       - internal_certs:/usr/share/elasticsearch/config/certs/internal:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -s --cacert /usr/share/elasticsearch/config/certs/internal/ca.crt -u elastic:${ELASTIC_PASSWORD:-changeme} https://elasticsearch:9200 >/dev/null"]
+      test: ["CMD-SHELL", "curl -s --cacert /usr/share/elasticsearch/config/certs/internal/ca.crt -u elastic:${ELASTIC_PASSWORD} https://elasticsearch:9200 >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -228,8 +228,8 @@ services:
     environment:
       - ELASTICSEARCH_HOST=elasticsearch:9200
       - ELASTIC_USER=elastic
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
-      - KIBANA_PASSWORD=${KIBANA_PASSWORD:-changeme}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
       - CA_CERT=/certs/internal/ca.crt
     command: ["/bin/sh", "/scripts/setup-kibana-password.sh"]
     depends_on:
@@ -256,7 +256,7 @@ services:
     environment:
       - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
       - ELASTIC_USER=elastic
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -282,7 +282,7 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
       - ELASTICSEARCH_USERNAME=kibana_system
-      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:-changeme}
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
       - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/internal/ca.crt
       - SERVER_SSL_ENABLED=true
       - SERVER_SSL_CERTIFICATE=/usr/share/kibana/config/certs/internal/kibana.crt
