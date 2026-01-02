@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { KeycloakService } from 'keycloak-angular';
+import Keycloak from 'keycloak-js';
 
 export type AppRole = 'PATIENT' | 'DOCTOR';
 
@@ -15,10 +15,10 @@ interface KeycloakToken {
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly keycloak = inject(KeycloakService);
+  private readonly kc = inject(Keycloak);
 
   private get token(): KeycloakToken {
-    return (this.keycloak.getKeycloakInstance().tokenParsed as KeycloakToken) ?? {};
+    return (this.kc.tokenParsed as KeycloakToken) ?? {};
   }
 
   get sub(): string {
@@ -31,12 +31,10 @@ export class AuthService {
     return this.token.preferred_username;
   }
 
-  // KEEP email in token (as you confirmed)
   get email(): string | undefined {
     return this.token.email;
   }
 
-  /** Realm roles from JWT: realm_access.roles */
   get roles(): string[] {
     const roles = this.token?.realm_access?.roles;
     return Array.isArray(roles) ? roles : [];
@@ -57,12 +55,15 @@ export class AuthService {
     return this.selectedRole;
   }
 
-  async refreshToken(): Promise<void> {
-    const kc = this.keycloak.getKeycloakInstance();
-    await kc.updateToken(-1);
+  isLoggedIn(): boolean {
+    return !!this.kc.authenticated;
   }
 
-  logout() {
-    return this.keycloak.logout('https://localhost/');
+  async refreshToken(): Promise<void> {
+    await this.kc.updateToken(-1);
+  }
+
+  async logout(): Promise<void> {
+    await this.kc.logout({ redirectUri: 'https://localhost/' });
   }
 }

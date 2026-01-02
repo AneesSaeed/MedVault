@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { KeycloakService } from 'keycloak-angular';
+import { AuthService } from './core/services/auth.service';
 import { InactivityTimeoutService } from './core/services/inactivity-timeout.service';
 import { InactivityWarningModalComponent } from './shared/modal/inactivity-warning-modal/inactivity-warning-modal.component';
 import { HeaderComponent } from './header/header.component';
@@ -13,12 +13,11 @@ import { RouterModule } from '@angular/router';
   imports: [HeaderComponent, RouterModule, InactivityWarningModalComponent]
 })
 export class AppComponent implements OnInit {
-  private readonly keycloak = inject(KeycloakService);
+  private readonly auth = inject(AuthService);
   private readonly inactivityTimeout = inject(InactivityTimeoutService);
 
   async ngOnInit(): Promise<void> {
-    const isLoggedIn = await this.keycloak.isLoggedIn();
-    if (isLoggedIn) {
+    if (this.auth.isLoggedIn()) {
       this.inactivityTimeout.startWatching();
     }
   }

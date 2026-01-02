@@ -7,8 +7,8 @@ export type WarningState = { remainingSeconds: number };
 
 @Injectable({ providedIn: 'root' })
 export class InactivityTimeoutService {
-  private readonly INACTIVITY_TIMEOUT_MS = 1 * 60 * 1000;
-  private readonly WARNING_BEFORE_LOGOUT_MS = 30 * 1000;
+  private readonly INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
+  private readonly WARNING_BEFORE_LOGOUT_MS = 60 * 1000;
 
   private timeoutId: number | null = null;
   private warningTimeoutId: number | null = null;
