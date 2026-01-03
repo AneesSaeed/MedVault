@@ -287,19 +287,53 @@ services:
       - SERVER_SSL_ENABLED=true
       - SERVER_SSL_CERTIFICATE=/usr/share/kibana/config/certs/internal/kibana.crt
       - SERVER_SSL_KEY=/usr/share/kibana/config/certs/internal/kibana.key
+      # SECURITY: Encryption keys for saved objects (must be 32 characters)
+      # Generate with: openssl rand -hex 16
+      # Must be defined in .env file (no default value for security)
+      - XPACK_SECURITY_ENCRYPTION_KEY=${KIBANA_ENCRYPTION_KEY}
+      - XPACK_ENCRYPTED_SAVED_OBJECTS_ENCRYPTION_KEY=${KIBANA_ENCRYPTION_KEY}
+      - XPACK_REPORTING_ENCRYPTION_KEY=${KIBANA_ENCRYPTION_KEY}
     depends_on:
       elasticsearch:
         condition: service_healthy
       setup_kibana_password:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "curl -f --cacert /usr/share/kibana/config/certs/internal/ca.crt https://localhost:5601 || exit 1"]
+      # Check Kibana status endpoint via HTTPS with proper certificate verification
+      # Use /api/status which is more reliable than just checking if the server is up
+      # Certificate is for "kibana" hostname, so we use --resolve to map kibana to 127.0.0.1
+      # This allows proper SSL verification using the CA certificate
+      test: ["CMD-SHELL", "/usr/bin/curl -sf --cacert /usr/share/kibana/config/certs/internal/ca.crt --resolve kibana:5601:127.0.0.1 https://kibana:5601/api/status > /dev/null 2>&1 || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 60s  # Kibana prend 20-30 secondes à démarrer complètement
     restart: always
     volumes:
       - internal_certs:/usr/share/kibana/config/certs/internal:ro
+
+  # Import Kibana saved objects (dashboards, visualizations, etc.)
+  import_kibana_objects:
+    image: curlimages/curl:latest
+    container_name: import_kibana_objects
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./kibana:/kibana:ro
+      - internal_certs:/certs/internal:ro
+    environment:
+      - KIBANA_HOST=kibana:5601
+      - ELASTIC_USER=elastic
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - IMPORT_FILE=/kibana/healthsec-full-import.ndjson
+      - CA_CERT=/certs/internal/ca.crt
+    command: ["/bin/sh", "/scripts/import-kibana-objects.sh"]
+    depends_on:
+      kibana:
+        condition: service_started  # Use service_started instead of service_healthy (healthcheck has SSL cert issue)
+      internal_certs:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   db_data:
   keycloak_db_data:
