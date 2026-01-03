@@ -28,7 +28,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 
 if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-  echo "❌ ERROR: Kibana did not become ready after $MAX_RETRIES attempts"
+  echo "ERROR: Kibana did not become ready after $MAX_RETRIES attempts"
   exit 1
 fi
 
@@ -37,7 +37,7 @@ echo "Waiting for Kibana to fully initialize..."
 sleep 5
 
 if [ ! -f "$IMPORT_FILE" ]; then
-  echo "❌ ERROR: Import file not found: $IMPORT_FILE"
+  echo "ERROR: Import file not found: $IMPORT_FILE"
   exit 1
 fi
 
@@ -55,19 +55,19 @@ HTTP_CODE=$(curl -s -k -w "%{http_code}" -o /tmp/kibana_import_response.json \
 
 if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
   echo ""
-  echo "✅ Kibana saved objects imported successfully!"
+  echo "SUCCESS: Kibana saved objects imported successfully!"
   echo "Response:"
   cat /tmp/kibana_import_response.json 2>/dev/null | head -20 || true
 else
   echo ""
-  echo "⚠️  Import completed with HTTP code: $HTTP_CODE"
+  echo "WARNING: Import completed with HTTP code: $HTTP_CODE"
   echo "Response:"
   cat /tmp/kibana_import_response.json 2>/dev/null || true
   
   # Check if objects already exist (which is fine)
   if grep -q "already exists" /tmp/kibana_import_response.json 2>/dev/null; then
     echo ""
-    echo "ℹ️  Some objects already exist (this is normal if re-running the script)"
+    echo "INFO: Some objects already exist (this is normal if re-running the script)"
     exit 0
   fi
   
