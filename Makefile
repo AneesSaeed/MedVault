@@ -1,49 +1,33 @@
-.PHONY: help install setup up down logs status clean
+.PHONY: help setup up down logs status clean
 
 help:
-	@echo "HealthSec - Project Management"
-	@echo ""
-	@echo "Available commands:"
-	@echo "  make install   - Setup dependencies (make scripts executable)"
-	@echo "  make setup     - Same as install"
-	@echo "  make up        - Start all Docker services"
-	@echo "  make down      - Stop all Docker services"
-	@echo "  make logs      - View logs from all services"
-	@echo "  make status    - Check status of running services"
-	@echo "  make clean     - Stop services and remove volumes"
-	@echo "  make help      - Show this help message"
-	@echo ""
+	@echo "Commands:"
+	@echo "  make setup   - Make required scripts executable"
+	@echo "  make up      - Start services"
+	@echo "  make down    - Stop services"
+	@echo "  make logs    - Follow logs"
+	@echo "  make status  - Show running containers"
+	@echo "  make clean   - Stop services + remove volumes"
 
-install:
-	@echo "Making scripts executable..."
+setup:
 	@chmod +x ./scripts/setup-kibana-password.sh
 	@chmod +x ./scripts/import-kibana-objects.sh
 	@chmod +x ./nginx/generate-localhost-cert.sh
 	@chmod +x ./internal-certs/generate-internal-certs.sh
-	@echo "✅ Scripts are now executable"
-
-setup: install
 
 up:
-	@echo "Starting all services..."
-	@docker-compose up -d
-	@echo "✅ Services starting. Wait 1-2 minutes for full initialization."
-	@echo "Access the app at: https://localhost"
+	@docker compose up -d
 
 down:
-	@echo "Stopping all services..."
-	@docker-compose down
-	@echo "✅ Services stopped"
+	@docker compose down
 
 logs:
-	@docker-compose logs -f
+	@docker compose logs -f
 
 status:
-	@docker-compose ps
+	@docker compose ps
 
 clean:
-	@echo "Removing all services and volumes..."
-	@docker-compose down -v
-	@echo "✅ All services and data removed"
+	@docker compose down -v
 
 .DEFAULT_GOAL := help

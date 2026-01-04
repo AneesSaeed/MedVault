@@ -1,56 +1,31 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
-echo "================================================"
-echo "HealthSec - Setup Script"
-echo "================================================"
-echo ""
+# Check Docker
+command -v docker >/dev/null 2>&1 || {
+  echo "Docker is required."
+  exit 1
+}
 
-# Check if Docker is installed
-echo "Checking prerequisites..."
-if ! command -v docker &> /dev/null; then
-    echo "Docker is not installed. Please install Docker Desktop from:"
-    echo "   https://www.docker.com/products/docker-desktop"
-    exit 1
-fi
-
-if ! command -v docker-compose &> /dev/null; then
-    echo "Docker Compose is not installed."
-    exit 1
-fi
-
-echo "✅ Docker is installed: $(docker --version)"
-echo "✅ Docker Compose is installed: $(docker-compose --version)"
-echo ""
+# Check Docker Compose (plugin)
+docker compose version >/dev/null 2>&1 || {
+  echo "Docker Compose is required (docker compose)."
+  exit 1
+}
 
 # Make scripts executable
-echo "Making scripts executable..."
-chmod +x ./scripts/setup-kibana-password.sh || echo "⚠️  Warning: Could not chmod scripts/setup-kibana-password.sh"
-chmod +x ./scripts/import-kibana-objects.sh || echo "⚠️  Warning: Could not chmod scripts/import-kibana-objects.sh"
-chmod +x ./nginx/generate-localhost-cert.sh || echo "⚠️  Warning: Could not chmod nginx/generate-localhost-cert.sh"
-chmod +x ./internal-certs/generate-internal-certs.sh || echo "⚠️  Warning: Could not chmod internal-certs/generate-internal-certs.sh"
+chmod +x ./scripts/setup-kibana-password.sh 2>/dev/null || true
+chmod +x ./scripts/import-kibana-objects.sh 2>/dev/null || true
+chmod +x ./nginx/generate-localhost-cert.sh 2>/dev/null || true
+chmod +x ./internal-certs/generate-internal-certs.sh 2>/dev/null || true
 
-echo "✅ Scripts made executable"
-echo ""
 
-# Verify .env file exists
+# Verify .env
 if [ ! -f .env ]; then
-    echo "❌ .env file not found!"
-    echo "   Make sure .env exists at the project root with required variables."
-    exit 1
+  echo ".env file not found at project root."
+  exit 1
 fi
 
-echo "✅ .env file found"
-echo ""
-
-# Summary
-echo "================================================"
-echo "Setup completed successfully! 🎉"
-echo "================================================"
-echo ""
-echo "Next steps:"
-echo "  1. Run: docker-compose up -d"
-echo "  2. Wait 1-2 minutes for all services to start"
-echo "  3. Access the app at: https://localhost"
-echo ""
+echo "Setup complete."
+echo "Run: docker compose up -d"

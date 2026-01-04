@@ -9,72 +9,72 @@
 
 ## Overview
 
-HealthSec is a secure medical records management system implementing end-to-end encryption (RSA 2048-bit + AES-256-GCM) using Spring Boot 3.5.7 backend, Angular frontend, Keycloak authentication, and ELK Stack logging with TLS.
+HealthSec is a web application for managing medical records securely.
+It allows **patients** and **doctors** to create accounts, share medical records, and access them.
+
+The project is fully containerized and runs with Docker Compose.
 
 ---
 
 ## Prerequisites
 
-- **Docker Desktop** (https://www.docker.com/products/docker-desktop)
-  - Works on Ubuntu 22.04 and Windows 10+
-
-Verify installation:
-```bash
-docker --version
-docker-compose --version
-```
+- Docker
+- Docker Compose
 
 ---
 
-## Installation and Building
+## Installation and Run
 
 ### 1. Clone the Project
 
 ```bash
-git clone <REPOSITORY-URL>
+git clone git@git.esi-bru.be:62294/secu-project.git
 cd secu-project
 ```
 
-### 2. Setup and Launch
-
-We provide two methods to build and run the project:
-
-#### Method A: Using Setup Script (Simple & Universal)
+### 2. Start the Application
 
 ```bash
-# Make scripts executable and verify dependencies
-bash setup.sh
+docker compose up
+```
+This command is sufficient in normal conditions.
+All required scripts are executed inside the containers.
+First startup may take a few minutes.
 
-# Launch all services
+---
+
+### Alternative Setup (If Needed)
+
+If execution permissions are missing on some systems, use one of the following methods.
+
+#### Method A: Setup Script
+
+```bash
+bash setup.sh
 docker-compose up -d
 ```
 
 **What `setup.sh` does:**
-- Verifies Docker and Docker Compose are installed
-- Makes all required scripts executable (chmod +x)
-- Checks that `.env` file exists
-- Shows next steps
+- checks Docker and Docker Compose
+- sets execution permissions on required scripts
+- verifies the .env file
 
-#### Method B: Using Makefile (Advanced Users)
+#### Method B: Makefile
 
 ```bash
-# Setup dependencies
 make setup
-
-# Launch all services
 make up
 ```
 
-**Available Makefile commands:**
-- `make help` - Show all available commands
-- `make setup` - Make scripts executable
-- `make up` - Start all Docker services
-- `make down` - Stop all services
-- `make logs` - View logs in real-time
-- `make status` - Check service status
-- `make clean` - Stop services and remove volumes
+**Available commands:**
+- `make setup` — make required scripts executable
+- `make up` — start services
+- `make down` — stop services
+- `make logs` — view logs
+- `make status` — service status
+- `make clean` — stop services and remove volumes
 
-#### Manual Setup (If Needed)
+#### Manual Setup (Last Resort)
 
 If the above methods don't work, you can manually execute:
 
@@ -85,110 +85,39 @@ chmod +x ./nginx/generate-localhost-cert.sh
 chmod +x ./internal-certs/generate-internal-certs.sh
 docker-compose up -d
 ```
-
-### 3. Wait for Services to Initialize
-
-Wait **1-2 minutes** for all services to be ready.
-
-View logs:
-```bash
-docker-compose logs -f
-# OR with Makefile:
-make logs
-```
-
-### 4. Verify All Services Are Running
-
-```bash
-docker-compose ps
-# OR with Makefile:
-make status
-```
-
-All containers should show status **Up**.
-
 ---
-
-## How to Use
-
 ### Access the Application
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **HealthSec App** | https://localhost | Create account in UI |
-| **Kibana Logs** | https://localhost:5601 | `elastic` / (see `.env`) |
-| **Database UI** | http://localhost:5050 | `app` / `app` |
+| **HealthSec App** | https://localhost | Create account |
+| **Kibana Logs** | https://localhost:5601 | username = `elastic` /  password = `supersecret` |
+| **Database UI** | http://localhost:5050 | `PostgreSQL` / `app` / `app` |
 
-### User Workflows
+---
+## Usage
 
-**For Patients:**
-1. Register at https://localhost
-2. Crypto keys generated automatically (RSA + AES-256)
-3. Add doctors by their email
-4. Upload encrypted medical records
+**Patients:**
+1. Register
+2. Add doctors
+3. Upload medical records
 
 **For Doctors:**
-1. Register at https://localhost
-2. Receive patient invitations
-3. Access encrypted patient records
-
-### API Examples
-
-```bash
-# Create patient account
-curl -k -X POST https://localhost:8081/api/user/create-patient \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <JWT>" \
-  -d '{...}'
-
-# Get patient data
-curl -k https://localhost:8081/api/patient/me \
-  -H "Authorization: Bearer <JWT>"
-```
+1. Register
+2. Be added by a patient
+3. Access patient records
+4. Propose medical files to patients
 
 ---
-
-## Troubleshooting
-
-### Docker Issues
-
-```bash
-# Check service health
-docker-compose ps
-# OR: make status
-
-# View logs for specific service
-docker-compose logs spring_backend
-docker-compose logs keycloak
-# OR view all logs: make logs
-
-# Clean restart (removes all data)
-docker-compose down -v
-docker-compose up -d
-# OR: make clean && make up
-```
-
-### Port Already in Use
-
-```bash
-# Stop all services
-docker-compose down
-# OR: make down
-```
-
----
-
 ## Stop the Project
 
 ```bash
-# Stop all services (keeps data)
 docker-compose down
 # OR: make down
 ```
 
-To also remove persistent data:
+To remove all data:
 ```bash
-# Stop and remove all volumes
 docker-compose down -v
 # OR: make clean
 ```
@@ -199,49 +128,15 @@ docker-compose down -v
 
 ```
 secu-project/
-├── frontend/              # Angular 19 SPA (port 4200)
-├── backend/               # Spring Boot 3.5.7 API (port 8081)
-├── keycloak-config/       # OAuth2 realm configuration
-├── nginx/                 # HTTPS reverse proxy (port 443)
-├── logstash/              # Log pipeline
-├── kibana/                # Dashboards
-├── internal-certs/        # TLS certificate generation
-├── docker-compose.yml     # Service orchestration
-├── .env                   # Environment variables
-├── setup.sh               # Dependency setup script
-└── README.md              # This file
+├── frontend/              # Angular frontend
+├── backend/               # Spring Boot backend
+├── keycloak-config/       # realm configuration
+├── nginx/                 # reverse proxy
+├── logstash/              # Logging pipeline
+├── kibana/                # Log dashboards
+├── internal-certs/
+├── docker-compose.yml
+├── .env
+├── setup.sh
+└── README.md
 ```
-
----
-
-## Security Features
-
-- **End-to-End Encryption**: RSA 2048-bit + AES-256-GCM
-- **OAuth2 Authentication**: Keycloak JWT validation
-- **TLS/HTTPS**: All internal and external communication encrypted
-- **Rate Limiting**: Protection against brute-force attacks
-- **Secure Logging**: ELK Stack with TLS and authentication
-- **No Plaintext Storage**: Medical data encrypted at rest
-
----
-
-## Configuration
-
-All configuration is in `.env` (already provided):
-- PostgreSQL credentials
-- Keycloak admin account
-- Elasticsearch/Kibana passwords
-- Backend JDBC and Keycloak URIs
-
----
-
-## Submission Requirements
-
--  Authors and matricules listed above
--  README with build and usage instructions
--  Setup script for dependency configuration
--  Runs on Ubuntu 22.04 and Windows 10+ with Docker
-
----
-
-**Last updated: January 4, 2026** 

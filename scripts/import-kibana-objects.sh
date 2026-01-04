@@ -1,15 +1,13 @@
 #!/bin/bash
 # Script to import Kibana saved objects from NDJSON file
-# This script should be run after Kibana is ready
 #
 # SECURITY NOTE: Default passwords ("changeme") are for DEVELOPMENT ONLY.
-# In production, always set ELASTIC_PASSWORD and KIBANA_PASSWORD via .env file.
 
 set -e
 
 KIBANA_HOST="${KIBANA_HOST:-kibana:5601}"
 ELASTIC_USER="${ELASTIC_USER:-elastic}"
-ELASTIC_PASSWORD="${ELASTIC_PASSWORD:-changeme}"  # DEV ONLY - change in production
+ELASTIC_PASSWORD="${ELASTIC_PASSWORD:-changeme}"
 IMPORT_FILE="${IMPORT_FILE:-/kibana/healthsec-full-import.ndjson}"
 CA_CERT="${CA_CERT:-/certs/internal/ca.crt}"
 
@@ -32,7 +30,6 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
   exit 1
 fi
 
-# Wait a bit more for Kibana to fully initialize
 echo "Waiting for Kibana to fully initialize..."
 sleep 5
 
@@ -43,8 +40,6 @@ fi
 
 echo "Importing Kibana saved objects from $IMPORT_FILE..."
 
-# Import saved objects using Kibana API
-# Note: We use elastic user credentials to authenticate
 HTTP_CODE=$(curl -s -k -w "%{http_code}" -o /tmp/kibana_import_response.json \
   --cacert "$CA_CERT" \
   -X POST \
@@ -64,7 +59,7 @@ else
   echo "Response:"
   cat /tmp/kibana_import_response.json 2>/dev/null || true
   
-  # Check if objects already exist (which is fine)
+  # Check if objects already exist
   if grep -q "already exists" /tmp/kibana_import_response.json 2>/dev/null; then
     echo ""
     echo "INFO: Some objects already exist (this is normal if re-running the script)"
