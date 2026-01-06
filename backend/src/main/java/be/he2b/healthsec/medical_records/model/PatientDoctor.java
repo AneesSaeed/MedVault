@@ -16,6 +16,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Appointment link between a patient and a doctor.
+ *
+ * <p>Optionally stores the patient's AES key wrapped for the doctor so the doctor can decrypt
+ * the patient's encrypted data client-side. Removing the link removes access.</p>
+ */
 @Entity
 @Table(name = "patient_doctor")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -40,21 +46,8 @@ public class PatientDoctor {
     @Column(name = "appointed_at", nullable = true)
     private Instant appointedAt;
 
-    /** 
-     * Clé symétrique AES du PATIENT chiffrée avec la clé publique RSA du docteur.
-     * 
-     * Cette clé permet au médecin de déchiffrer les dossiers médicaux du patient.
-     * 
-     * SÉCURITÉ:
-     * - Cette clé est créée uniquement lors de la création de la relation PatientDoctor
-     * - Elle est chiffrée avec la clé publique RSA du médecin
-     * - Seul le médecin (avec sa clé privée RSA) peut la déchiffrer
-     * - Chaque relation PatientDoctor a sa propre copie de la clé AES du patient
-     * - Si la relation est supprimée, cette clé est également supprimée
-     */
     @Column(name = "encrypted_sym_key_for_doctor", columnDefinition = "bytea")
     private byte[] encryptedSymmetricKeyForDoctor;
-
 }
 
 

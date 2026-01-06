@@ -1,30 +1,23 @@
 package be.he2b.healthsec.medical_records.logging;
 
 import lombok.Getter;
+
+import java.util.Map;
+import java.util.HashMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Centralized logging service for Spring Boot backend
+ * Centralized structured logging helper.
  *
- * This service integrates with Logstash/ELK Stack via logback configuration.
- * All logs are sent to Logstash (TCP port 5000) for centralized monitoring.
- *
- * Usage in service classes:
- *   private static final Logger logger = LoggerFactory.getLogger(MyService.class);
- *
- * Or use this service for structured logging:
- *   @Autowired
- *   private LoggingService loggingService;
- *
- *   loggingService.info("User login", Map.of(
- *     "userId", keycloakId,
- *     "username", username
- *   ));
+ * <p>Used to emit consistent, parse-friendly logs (API requests, user actions, security events,
+ * crypto operations). Integration/forwarding (e.g., Logstash/ELK) is handled by logback config.</p>
  */
 @Service
 public class LoggingService {
+  
   private static final Logger LOGGER = LoggerFactory.getLogger(LoggingService.class);
 
   @Getter
@@ -46,7 +39,7 @@ public class LoggingService {
   /**
    * Log general info message with metadata
    */
-  public void info(String message, java.util.Map<String, ?> metadata) {
+  public void info(String message, Map<String, ?> metadata) {
     LOGGER.info("[{}] {}", "INFO", formatWithMetadata(message, metadata));
   }
 
@@ -60,7 +53,7 @@ public class LoggingService {
   /**
    * Log debug message with metadata
    */
-  public void debug(String message, java.util.Map<String, ?> metadata) {
+  public void debug(String message, Map<String, ?> metadata) {
     LOGGER.debug("[{}] {}", "DEBUG", formatWithMetadata(message, metadata));
   }
 
@@ -74,7 +67,7 @@ public class LoggingService {
   /**
    * Log warning message with metadata
    */
-  public void warn(String message, java.util.Map<String, ?> metadata) {
+  public void warn(String message, Map<String, ?> metadata) {
     LOGGER.warn("[{}] {}", "WARN", formatWithMetadata(message, metadata));
   }
 
@@ -88,7 +81,7 @@ public class LoggingService {
   /**
    * Log error with exception and metadata
    */
-  public void error(String message, Exception e, java.util.Map<String, ?> metadata) {
+  public void error(String message, Exception e, Map<String, ?> metadata) {
     LOGGER.error("[{}] {} | Metadata: {}", "ERROR", message, metadata, e);
   }
 
@@ -109,7 +102,7 @@ public class LoggingService {
   /**
    * Log critical/fatal error
    */
-  public void fatal(String message, Exception e, java.util.Map<String, ?> metadata) {
+  public void fatal(String message, Exception e, Map<String, ?> metadata) {
     LOGGER.error("[FATAL] {} | Metadata: {}", message, metadata, e);
   }
 
@@ -120,9 +113,9 @@ public class LoggingService {
       String eventType,
       String userId,
       String severity,
-      java.util.Map<String, ?> metadata
+      Map<String, ?> metadata
   ) {
-    java.util.Map<String, Object> auditMetadata = new java.util.HashMap<>(metadata != null ? metadata : java.util.Map.of());
+    Map<String, Object> auditMetadata = new HashMap<>(metadata != null ? metadata : Map.of());
     auditMetadata.put("eventType", eventType);
     auditMetadata.put("userId", userId);
     auditMetadata.put("severity", severity);
@@ -139,8 +132,8 @@ public class LoggingService {
   /**
    * Log user action (for audit trail)
    */
-  public void logAction(String action, String userId, java.util.Map<String, ?> metadata) {
-    java.util.Map<String, Object> actionMetadata = new java.util.HashMap<>(metadata != null ? metadata : java.util.Map.of());
+  public void logAction(String action, String userId, Map<String, ?> metadata) {
+    Map<String, Object> actionMetadata = new HashMap<>(metadata != null ? metadata : Map.of());
     actionMetadata.put("action", action);
     actionMetadata.put("userId", userId);
 
@@ -164,8 +157,8 @@ public class LoggingService {
   /**
    * Log encryption operation
    */
-  public void logCrypto(String operation, boolean success, String userId, java.util.Map<String, ?> metadata) {
-    java.util.Map<String, Object> cryptoMetadata = new java.util.HashMap<>(metadata != null ? metadata : java.util.Map.of());
+  public void logCrypto(String operation, boolean success, String userId, Map<String, ?> metadata) {
+    Map<String, Object> cryptoMetadata = new HashMap<>(metadata != null ? metadata : Map.of());
     cryptoMetadata.put("operation", operation);
     cryptoMetadata.put("success", success);
     cryptoMetadata.put("userId", userId);
@@ -176,7 +169,7 @@ public class LoggingService {
   /**
    * Format message with metadata for logging
    */
-  private String formatWithMetadata(String message, java.util.Map<String, ?> metadata) {
+  private String formatWithMetadata(String message, Map<String, ?> metadata) {
     if (metadata == null || metadata.isEmpty()) {
       return message;
     }

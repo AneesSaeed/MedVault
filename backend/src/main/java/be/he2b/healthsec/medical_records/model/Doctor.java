@@ -20,6 +20,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Doctor profile linked 1:1 to {@link User} (shared primary key).
+ *
+ * <p>Doctor identity fields are stored in cleartext to support search and patient discovery.
+ * The doctor's RSA public key is stored in {@link User#publicKey}.</p>
+ */
 @Entity
 @Table(name = "doctors")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -34,41 +40,18 @@ public class Doctor {
     @JoinColumn(name = "id")
     private User user;
 
-    /**
-     * SÉCURITÉ: Toutes les informations des médecins sont stockées EN CLAIR
-     * car les médecins sont "découvrables" par les patients pour l'identification.
-     */
-    
-    /**
-     * Prénom du médecin (en clair).
-     * Permet aux patients de rechercher et identifier les médecins.
-     */
     @Column(name = "first_name", nullable = false)
     private String firstName;
-    
-    /**
-     * Nom du médecin (en clair).
-     * Permet aux patients de rechercher et identifier les médecins.
-     */
+
     @Column(name = "last_name", nullable = false)
     private String lastName;
-    
-    /**
-     * Email du médecin (en clair).
-     * Contact professionnel visible par les patients.
-     */
+
     @Column(name = "email", nullable = false)
     private String email;
 
-    /**
-     * Organisation médicale en clair.
-     * Les informations des médecins sont stockées en clair pour permettre
-     * aux patients de les identifier et de les rechercher.
-     */
     @Column(name = "medical_organisation", nullable = false)
     private String medicalOrganization;
 
-    // Un doctor a plusieurs liens PatientDoctor
     @Builder.Default
     @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PatientDoctor> patientLinks = new HashSet<>();

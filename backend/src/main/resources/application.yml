@@ -5,14 +5,14 @@ server:
     enabled: true
     key-store: /certs/internal/backend.p12
     key-store-type: PKCS12
-    # SECURITY NOTE: Password "secret" is for DEVELOPMENT ONLY.
-    # Matches docker-compose.yml and internal-certs/generate-internal-certs.sh
+    # Dev-only keystore password (matches docker-compose + cert generation script)
     key-store-password: secret
 
 spring:
   servlet:
     multipart:
       enabled: true
+      # Upload limits (also enforced in controller validation and in nginx)
       max-file-size: 10MB
       max-request-size: 15MB
 
@@ -29,11 +29,11 @@ spring:
     oauth2:
       resourceserver:
         jwt:
+          # Validate JWT issuer and fetch signing keys (Keycloak)
           issuer-uri: ${KEYCLOAK_ISSUER_URI:https://localhost/auth/realms/health-realm}
           jwk-set-uri: ${KEYCLOAK_JWKS_URI:https://keycloak:8443/auth/realms/health-realm/protocol/openid-connect/certs}
 
-# Custom Keycloak Admin API configuration (used by KeycloakAdminService)
-# Properties are documented in META-INF/additional-spring-configuration-metadata.json
+# Keycloak Admin API settings used by KeycloakAdminService (role assignment during onboarding)
 keycloak:
   admin:
     base-url: ${KEYCLOAK_ADMIN_BASE_URL:https://keycloak:8443/auth}

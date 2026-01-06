@@ -22,7 +22,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
-@EnableWebSecurity // tell Spring that this class defines the security rules for the app
+@EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
@@ -36,12 +36,10 @@ public class SecurityConfig {
             })
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // onboarding endpoints: authenticated, but NOT role-gated (role assigned after)
                 .requestMatchers(HttpMethod.POST, "/api/patient").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/doctor").authenticated()
                 .requestMatchers("/api/user/**").authenticated()
 
-                // everything else: role-gated using token roles
                 .requestMatchers("/api/medical-files/**").hasAnyRole("PATIENT", "DOCTOR")
                 .requestMatchers("/api/patient-doctor/**").hasAnyRole("PATIENT", "DOCTOR")
 
@@ -55,6 +53,10 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Extracts Keycloak realm roles from the "realm_access.roles" claim and maps them to
+     * Spring Security authorities using the "ROLE_" prefix (e.g., PATIENT -> ROLE_PATIENT).
+     */
     @Bean
     public Converter<Jwt, AbstractAuthenticationToken> jwtAuthConverter() {
         return jwt -> {

@@ -12,8 +12,10 @@ import java.io.Serializable;
 import java.util.UUID;
 
 /**
- * Composite Primary Key for PatientSymmetricKey.
- * Identifies which doctor has access to which patient's symmetric key.
+ * Composite key: (patientId, recipientUserId) for {@link PatientSymmetricKey}.
+ *
+ * <p>Identifies the wrapped copy of the patient's AES key for a specific recipient
+ * (patient themself or an appointed doctor).</p>
  */
 @Embeddable
 @Getter

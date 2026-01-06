@@ -17,6 +17,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Encrypted medical file stored in a patient's medical record.
+ *
+ * <p>All fields are stored as ciphertext (bytea). The server never decrypts file content or metadata.</p>
+ */
 @Entity
 @Table(name = "medical_files")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

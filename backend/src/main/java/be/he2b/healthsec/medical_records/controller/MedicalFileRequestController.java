@@ -1,5 +1,11 @@
 package be.he2b.healthsec.medical_records.controller;
 
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import jakarta.validation.Valid;
+
 import be.he2b.healthsec.medical_records.dto.CreatePendingMedicalFileDTO;
 import be.he2b.healthsec.medical_records.dto.PendingMedicalFileInfoDTO;
 import be.he2b.healthsec.medical_records.logging.LoggingService;
@@ -21,12 +27,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
-
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
+/**
+ * Pending medical file request API (doctor -> patient workflow).
+ *
+ * <p>Responsibilities:
+ * <ul>
+ *   <li>Doctors create a request for a patient to upload/confirm a file.</li>
+ *   <li>Patients list their pending requests.</li>
+ *   <li>Patients delete (reject) a pending request.</li>
+ * </ul>
+ * </p>
+ */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -38,35 +49,36 @@ public class MedicalFileRequestController {
     private final LoggingService logger;
 
     /**
-     * DOCTOR: créer une demande pour un patient.
+     * Doctor: creates a pending medical file request for a patient.
      */
     @PostMapping("/patient/{patientId}/file-requests")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> createRequest(@AuthenticationPrincipal Jwt jwt,
-                                                @PathVariable("patientId") UUID patientId,
-                                                @Valid @RequestBody CreatePendingMedicalFileDTO dto) {
+            @PathVariable("patientId") UUID patientId,
+            @Valid @RequestBody CreatePendingMedicalFileDTO dto
+    ) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("POST", "/api/patient/" + patientId + "/file-requests", keycloakId);
-        
 
         if (!JwtRoles.hasRealmRole(jwt, "DOCTOR")) {
             throw new IllegalArgumentException("Only doctors can create file requests");
         }
-        
+
         User caller = userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         String id = service.createRequest(patientId, keycloakId, dto);
+
         logger.logAction("MEDICAL_FILE_REQUEST_CREATED", keycloakId, Map.of(
-            "patientId", patientId.toString(),
-            "requestId", id,
-            "doctorId", caller.getId().toString()
-        ));
+                "patientId", patientId.toString(),
+                "requestId", id,
+                "doctorId", caller.getId().toString()));
+
         return ResponseEntity.ok(id);
     }
 
     /**
-     * PATIENT: lister ses demandes en attente.
+     * Patient: lists their own pending file requests.
      */
     @GetMapping("/patient/me/file-requests")
     @PreAuthorize("isAuthenticated()")
@@ -79,46 +91,47 @@ public class MedicalFileRequestController {
 
         if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
             logger.logSecurityEvent("UNAUTHORIZED_FILE_REQUEST_LIST", keycloakId, "MEDIUM", Map.of(
-                    "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt))
-            ));
+                    "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt))));
             return ResponseEntity.status(403).build();
         }
 
         List<PendingMedicalFileInfoDTO> items = service.listForPatient(user.getId());
+
         logger.info("Patient listed pending file requests", Map.of(
                 "patientId", user.getId().toString(),
-                "count", items.size()
-        ));
+                "count", items.size()));
+
         return ResponseEntity.ok(items);
     }
 
     /**
-     * PATIENT: rejeter (supprimer) une demande.
+     * Patient: deletes (rejects) a pending request.
      */
     @DeleteMapping("/patient/file-requests/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> deleteRequest(@AuthenticationPrincipal Jwt jwt,
-                                              @PathVariable("id") UUID requestId) {
+    public ResponseEntity<Void> deleteRequest(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable("id") UUID requestId
+    ) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("DELETE", "/api/patient/file-requests/" + requestId, keycloakId);
-        
+
         User user = userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        
+
         if (!JwtRoles.hasRealmRole(jwt, "PATIENT")) {
             logger.logSecurityEvent("UNAUTHORIZED_FILE_REQUEST_DELETE", keycloakId, "MEDIUM", Map.of(
                     "requestId", requestId.toString(),
-                    "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt))
-            ));
+                    "effectiveRole", String.valueOf(JwtRoles.effectiveRole(jwt))));
             return ResponseEntity.status(403).build();
         }
 
         service.deleteRequest(requestId, user.getId());
-        
+
         logger.logAction("MEDICAL_FILE_REQUEST_DELETED", keycloakId, Map.of(
-            "requestId", requestId.toString(),
-            "patientId", user.getId().toString()
-        ));
+                "requestId", requestId.toString(),
+                "patientId", user.getId().toString()));
+                
         return ResponseEntity.noContent().build();
     }
 }

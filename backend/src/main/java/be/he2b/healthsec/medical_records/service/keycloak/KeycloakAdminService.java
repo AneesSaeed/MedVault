@@ -13,6 +13,16 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
+/**
+ * Minimal Keycloak Admin API client used to assign realm roles during onboarding.
+ *
+ * <p>Uses client_credentials to obtain an admin token, then:
+ * <ol>
+ *   <li>Fetches the realm role representation</li>
+ *   <li>Posts it to the user's realm role-mappings endpoint</li>
+ * </ol>
+ * </p>
+ */
 @Service
 public class KeycloakAdminService {
 
@@ -30,6 +40,12 @@ public class KeycloakAdminService {
     @Value("${keycloak.admin.client-secret}")
     private String clientSecret;
 
+    /**
+     * Assigns a Keycloak realm role to a user (limited to PATIENT/DOCTOR in this project).
+     *
+     * @param userId   Keycloak user id (subject)
+     * @param roleName Realm role name ("PATIENT" or "DOCTOR")
+     */
     public void assignRealmRole(String userId, String roleName) {
         if (!"PATIENT".equals(roleName) && !"DOCTOR".equals(roleName)) {
             throw new IllegalArgumentException("Invalid role: " + roleName);
@@ -69,7 +85,10 @@ public class KeycloakAdminService {
                 Void.class
         );
     }
-
+    
+    /**
+     * Retrieves an admin access token using client_credentials.
+     */
     private String getAdminToken() {
         String tokenUrl = baseUrl + "/realms/" + realm + "/protocol/openid-connect/token";
 

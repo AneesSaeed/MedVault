@@ -10,6 +10,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Composite key for {@link MedicalFileKey}: (fileId, recipientUserId).
+ */
 @Embeddable
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @EqualsAndHashCode
 public class MedicalFileKeyId implements Serializable {

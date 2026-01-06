@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
@@ -23,7 +22,9 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import be.he2b.healthsec.medical_records.config.RateLimitService;
 import be.he2b.healthsec.medical_records.dto.MedicalFileInfoDTO;
+import be.he2b.healthsec.medical_records.dto.ShareFileKeyDTO;
 import be.he2b.healthsec.medical_records.logging.LoggingService;
 import be.he2b.healthsec.medical_records.model.User;
 import be.he2b.healthsec.medical_records.security.JwtRoles;
@@ -32,6 +33,18 @@ import be.he2b.healthsec.medical_records.service.UserService;
 import be.he2b.healthsec.medical_records.util.EncryptedFileValidator;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Medical file API (patient-owned records).
+ *
+ * <p>Responsibilities:
+ * <ul>
+ *   <li>Patients upload/overwrite/delete encrypted files (.enc).</li>
+ *   <li>Patients download encrypted file content; server never decrypts.</li>
+ *   <li>Doctors can list/download a patient's encrypted files only if appointed.</li>
+ *   <li>Rate limiting is applied to uploads to mitigate abuse.</li>
+ * </ul>
+ * </p>
+ */
 @RestController
 @RequestMapping("/api/medical-files")
 @RequiredArgsConstructor
@@ -43,19 +56,23 @@ public class MedicalFileController {
     private final MedicalFileService medicalFileService;
     private final UserService userService;
     private final LoggingService logger;
-    private final be.he2b.healthsec.medical_records.config.RateLimitService rateLimitService;
+    private final RateLimitService rateLimitService;
 
+    /**
+     * Lists the authenticated patient's own medical files.
+     */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> listMyFiles(@AuthenticationPrincipal Jwt jwt) {
         logger.logApiRequest("GET", "/api/medical-files", jwt.getSubject());
         try {
             UUID patientId = currentPatientIdOrThrow(jwt);
             List<MedicalFileInfoDTO> files = medicalFileService.listPatientFiles(patientId);
+
             logger.logAction("PATIENT_LISTED_FILES", jwt.getSubject(), Map.of(
                 "patientId", patientId.toString(),
                 "filesCount", files.size()
             ));
+
             return ResponseEntity.ok(Map.of("files", files));
         } catch (IllegalArgumentException e) {
             logger.error("Failed to list patient files", e);
@@ -63,8 +80,10 @@ public class MedicalFileController {
         }
     }
 
+    /**
+     * Lists a patient's files for an appointed doctor
+     */
     @GetMapping("/patient/{patientId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> listFilesForDoctor(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String patientId
@@ -73,12 +92,15 @@ public class MedicalFileController {
         
         try {
             UUID doctorId = currentDoctorIdOrThrow(jwt);
-            List<MedicalFileInfoDTO> files = medicalFileService.listFilesForDoctor(doctorId, UUID.fromString(patientId));
+            List<MedicalFileInfoDTO> files = 
+                        medicalFileService.listFilesForDoctor(doctorId, UUID.fromString(patientId));
+
             logger.logAction("DOCTOR_LISTED_PATIENT_FILES", jwt.getSubject(), Map.of(
                 "doctorId", doctorId.toString(),
                 "patientId", patientId,
                 "filesCount", files.size()
             ));
+
             return ResponseEntity.ok(Map.of("files", files));
         } catch (IllegalArgumentException e) {
             logger.error("Failed to list files for doctor: " + e.getMessage(), e);
@@ -86,8 +108,11 @@ public class MedicalFileController {
         }
     }
 
+    /**
+     * Uploads an encrypted medical file for the authenticated patient.
+     * Expects client-side encryption
+     */
     @PostMapping(consumes = "multipart/form-data")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> upload(
         @AuthenticationPrincipal Jwt jwt,
         @RequestParam("fileNameEncBase64") String fileNameEncBase64,
@@ -97,26 +122,22 @@ public class MedicalFileController {
     ) {
         logger.logApiRequest("POST", "/api/medical-files", jwt.getSubject());
         
-        // SECURITY: Rate limiting sur les uploads de fichiers (Question 10 rapport sécurité)
+        // per-user rate limiting for file uploads
         String userId = jwt.getSubject();
         boolean allowed = rateLimitService.isRequestAllowed(
             userId,
-            be.he2b.healthsec.medical_records.config.RateLimitService.RequestType.FILE_UPLOAD
+            RateLimitService.RequestType.FILE_UPLOAD
         );
         
         if (!allowed) {
-            rateLimitService.recordRequest(userId, 
-                be.he2b.healthsec.medical_records.config.RateLimitService.RequestType.FILE_UPLOAD, 
-                false
-            );
-            return ResponseEntity.status(429).body(
-                Map.of("error", "Too many requests. Please try again later.")
-            );
+            rateLimitService.recordRequest(userId, RateLimitService.RequestType.FILE_UPLOAD, false);
+            return ResponseEntity.status(429).body( Map.of("error", "Too many requests. Please try again later."));
         }
         
         try {
             UUID patientId = currentPatientIdOrThrow(jwt);
             validateEncryptedUploadOrThrow(file);
+
             UUID fileId = medicalFileService.uploadPatientFile(
                 patientId, 
                 fileNameEncBase64, 
@@ -124,11 +145,13 @@ public class MedicalFileController {
                 file,
                 wrappedKeyForPatientBase64
             );
+
             logger.logAction("MEDICAL_FILE_UPLOADED", jwt.getSubject(), Map.of(
                 "patientId", patientId.toString(),
                 "fileId", fileId.toString(),
                 "fileSize", file.getSize()
             ));
+
             return ResponseEntity.ok(Map.of("fileId", fileId.toString()));
         } catch (IllegalArgumentException e) {
             logger.error("Failed to upload medical file", e);
@@ -136,8 +159,10 @@ public class MedicalFileController {
         }
     }
 
+    /**
+     * Overwrites an existing encrypted file for the authenticated patient.
+     */
     @PutMapping(value = "/{fileId}", consumes = "multipart/form-data")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> overwrite(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String fileId,
@@ -149,17 +174,20 @@ public class MedicalFileController {
         try {
             UUID patientId = currentPatientIdOrThrow(jwt);
             validateEncryptedUploadOrThrow(file);
+
             medicalFileService.overwritePatientFile(
                 patientId, 
                 UUID.fromString(fileId), 
                 uploadDateEncBase64, 
                 file
             );
+
             logger.logAction("MEDICAL_FILE_OVERWRITTEN", jwt.getSubject(), Map.of(
                 "patientId", patientId.toString(),
                 "fileId", fileId,
                 "fileSize", file.getSize()
             ));
+
             return ResponseEntity.ok(Map.of("message", "File overwritten"));
         } catch (IllegalArgumentException e) {
             logger.error("Failed to overwrite medical file: " + e.getMessage(), e);
@@ -167,8 +195,10 @@ public class MedicalFileController {
         }
     }
 
+    /**
+     * Deletes a medical file for the authenticated patient.
+     */
     @DeleteMapping("/{fileId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> delete(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String fileId
@@ -177,10 +207,12 @@ public class MedicalFileController {
         try {
             UUID patientId = currentPatientIdOrThrow(jwt);
             medicalFileService.deletePatientFile(patientId, UUID.fromString(fileId));
+
             logger.logAction("MEDICAL_FILE_DELETED", jwt.getSubject(), Map.of(
                 "patientId", patientId.toString(),
                 "fileId", fileId
             ));
+
             return ResponseEntity.ok(Map.of("message", "File deleted"));
         } catch (IllegalArgumentException e) {
             logger.error("Failed to delete medical file", e);
@@ -188,8 +220,10 @@ public class MedicalFileController {
         }
     }
 
+    /**
+     * Downloads the encrypted content of a file owned by the authenticated patient.
+     */
     @GetMapping("/{fileId}/download")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> downloadMyFile(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String fileId
@@ -198,11 +232,13 @@ public class MedicalFileController {
         try {
             UUID patientId = currentPatientIdOrThrow(jwt);
             byte[] contentEnc = medicalFileService.getEncryptedFileContent(patientId, UUID.fromString(fileId));
+
             logger.logAction("MEDICAL_FILE_DOWNLOADED", jwt.getSubject(), Map.of(
                 "patientId", patientId.toString(),
                 "fileId", fileId,
                 "contentSize", contentEnc.length
             ));
+
             return ResponseEntity.ok()
                 .header("Content-Type", "application/octet-stream")
                 .header("Content-Disposition", "attachment; filename=\"content.enc\"")
@@ -214,8 +250,10 @@ public class MedicalFileController {
         }
     }
 
+    /**
+     * Downloads an encrypted file for a doctor
+     */
     @GetMapping("/patient/{patientId}/{fileId}/download")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> downloadFileForDoctor(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String patientId,
@@ -224,7 +262,7 @@ public class MedicalFileController {
         try {
             UUID doctorId = currentDoctorIdOrThrow(jwt);
 
-            // only checks access; content is still encrypted
+            // Access check (content stays encrypted)
             medicalFileService.listFilesForDoctor(doctorId, UUID.fromString(patientId));
 
             byte[] contentEnc = medicalFileService.getEncryptedFileContent(UUID.fromString(patientId), UUID.fromString(fileId));
@@ -239,13 +277,14 @@ public class MedicalFileController {
         }
     }
     
-
+    /**
+     * Shares wrapped file keys with an appointed doctor (patient action).
+     */
     @PostMapping("/share/doctor/{doctorId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> shareKeysWithDoctor(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable String doctorId,
-        @RequestBody List<be.he2b.healthsec.medical_records.dto.ShareFileKeyDTO> items
+        @RequestBody List<ShareFileKeyDTO> items
     ) {
         try {
             UUID patientId = currentPatientIdOrThrow(jwt);
@@ -265,13 +304,11 @@ public class MedicalFileController {
             throw new IllegalArgumentException("File too large (max 10 MB)");
         }
         
-        // SECURITY: Tous les fichiers DOIVENT être chiffrés côté client avant upload
-        // Référence: SECURITY_CHECKLIST.md Section 1 - Confidentiality (zero-trust server)
-        // Le backend ne fait pas confiance au serveur, donc tous les fichiers doivent être chiffrés
+        // Enforce client-side encryption: only .enc files are accepted
         String fileName = file.getOriginalFilename();
         String contentType = file.getContentType();
         
-        // EXIGENCE: Tous les fichiers doivent avoir l'extension .enc (fichiers chiffrés uniquement)
+
         if (fileName == null || !fileName.endsWith(".enc")) {
             logger.logSecurityEvent(
                 "UNENCRYPTED_FILE_REJECTED",
@@ -290,7 +327,7 @@ public class MedicalFileController {
             );
         }
         
-        // Valider la structure chiffrée (IV 12 bytes + ciphertext)
+        // Validate encrypted structure (IV 12 bytes + ciphertext)
         try (InputStream inputStream = file.getInputStream()) {
             boolean isValidEncrypted = EncryptedFileValidator.validateEncryptedFile(inputStream);
             

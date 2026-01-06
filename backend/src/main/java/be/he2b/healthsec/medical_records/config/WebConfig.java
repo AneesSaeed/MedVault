@@ -5,20 +5,29 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-@Configuration // marks a class that provides Spring configuration.
+/**
+ * Global CORS configuration for the REST API.
+ *
+ * <p>Applies CORS rules to all /api/** endpoints so a browser-based frontend hosted on
+ * https://localhost can call the backend with credentials.</p>
+ */
+@Configuration
 public class WebConfig {
 
-    @Bean // marks a method whose return value should be managed by Spring’s dependency injection container.
-    public WebMvcConfigurer corsConfigurer() { // WebMvcConfigurer is an interface that lets you customize Spring MVC’s default web settings (things like CORS, formatters, interceptors, etc.).
+    /**
+     * Registers CORS mappings for Spring MVC.
+     */
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
             @Override
-            public void addCorsMappings(CorsRegistry registry) { // CorsRegistry is a helper object for defining which origins, methods, or headers are allowed in CORS.
+            public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                .allowedOrigins("https://localhost")
-                .allowedMethods("GET", "POST", "PUT", "DELETE")
-                .allowedHeaders("*")
-                .exposedHeaders("*")
-                .allowCredentials(true);
+                    .allowedOrigins("https://localhost")
+                    .allowedMethods("GET", "POST", "PUT", "DELETE")
+                    .allowedHeaders("*")
+                    .exposedHeaders("*")
+                    .allowCredentials(true);
             }
         };
     }

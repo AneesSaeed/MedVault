@@ -6,8 +6,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * DTO pour retourner les informations d'un patient vu par un médecin.
- * Contient les données chiffrées du patient + la clé AES chiffrée pour le médecin.
+ * Doctor view of an appointed patient.
+ *
+ * <p>Contains encrypted patient identity fields and the patient's AES key wrapped for the doctor.
+ * The server returns these values as-is; decryption is client-side.</p>
  */
 @Getter
 @Setter
@@ -15,28 +17,18 @@ import lombok.Setter;
 @AllArgsConstructor
 public class DoctorPatientDTO {
     
-    /**
-     * ID du patient (UUID en string)
-     */
+    /** Patient identifier */
     private String patientId;
     
-    /**
-     * Prénom du patient chiffré (Base64)
-     */
+    /** Encrypted patient first name*/
     private String firstNameEnc;
     
-    /**
-     * Nom du patient chiffré (Base64)
-     */
+    /** Encrypted patient last name*/
     private String lastNameEnc;
     
-    /**
-     * Email du patient chiffré (Base64)
-     */
+    /** Encrypted patient email*/
     private String emailEnc;
     
-    /**
-     * Clé AES du patient chiffrée avec la clé publique RSA du médecin (Base64)
-     */
+    /** Patient AES key wrapped for the doctor */
     private String encryptedAESKey;
 }

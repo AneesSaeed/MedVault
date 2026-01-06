@@ -17,6 +17,11 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
+/**
+ * Aggregate root for a patient's medical record.
+ *
+ * <p>Shares the same id as the patient and groups the patient's {@link MedicalFile} entries.</p>
+ */
 @Entity
 @Table(name = "medical_records")
 @Getter 
@@ -27,7 +32,7 @@ import jakarta.persistence.Table;
 public class MedicalRecord {
 
     @Id
-    private UUID id; // same as patient id
+    private UUID id;
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId

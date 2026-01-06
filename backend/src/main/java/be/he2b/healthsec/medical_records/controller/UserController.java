@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
-
+import lombok.RequiredArgsConstructor;
 import be.he2b.healthsec.medical_records.dto.CreateDoctorDTO;
 import be.he2b.healthsec.medical_records.dto.CreatePatientDTO;
 import be.he2b.healthsec.medical_records.dto.MeResponseDTO;
@@ -29,25 +29,33 @@ import be.he2b.healthsec.medical_records.security.JwtRoles;
 import be.he2b.healthsec.medical_records.service.UserService;
 import be.he2b.healthsec.medical_records.service.keycloak.KeycloakAdminService;
 
+
+/**
+ * User onboarding and profile endpoints.
+ *
+ * <p>Responsibilities:
+ * <ul>
+ *   <li>Check if the authenticated Keycloak user exists in the app DB</li>
+ *   <li>Return "me" profile after onboarding</li>
+ *   <li>Create patient/doctor records and assign corresponding Keycloak realm roles</li>
+ *   <li>Return encrypted patient data (server never decrypts)</li>
+ * </ul>
+ * </p>
+ */
 @RestController
 @RequestMapping("/api")
 @Validated
+@RequiredArgsConstructor
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
+    private final KeycloakAdminService keycloakAdminService;
+    private final LoggingService logger;
 
-    @Autowired
-    private KeycloakAdminService keycloakAdminService;
-
-    @Autowired
-    private LoggingService logger;
-
-    // --------------------------------------------------------------
-    //  Check if the current authenticated Keycloak user exists
-    // --------------------------------------------------------------
+    /**
+     * Returns whether the authenticated Keycloak user exists in the application database.
+     */
     @GetMapping("/user/exists")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Boolean> userExists(@AuthenticationPrincipal Jwt jwt) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/user/exists", keycloakId);
@@ -56,11 +64,10 @@ public class UserController {
         return ResponseEntity.ok(exists);
     }
 
-    // --------------------------------------------------------------
-    //  Get user’s info (after onboarding)
-    // --------------------------------------------------------------
+    /**
+     * Returns the authenticated user's profile ("me") after onboarding.
+     */
     @GetMapping("/user/me")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> userMe(@AuthenticationPrincipal Jwt jwt) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/user/me", keycloakId);
@@ -77,14 +84,16 @@ public class UserController {
     }
 
 
-    // --------------------------------------------------------------
-    //  Create Patient (first-time onboarding)
-    // --------------------------------------------------------------
+    /**
+     * First-time onboarding: creates a patient record and assigns the Keycloak PATIENT role.
+     *
+     * <p>Requires the JWT claim "selected_role" to be PATIENT.</p>
+     */
     @PostMapping("/patient")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> createPatient(
             @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody CreatePatientDTO dto) {
+            @Valid @RequestBody CreatePatientDTO dto
+    ) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("POST", "/api/patient", keycloakId);
 
@@ -107,7 +116,7 @@ public class UserController {
                     dto.getSymmetricKeyEncBase64()
             );
 
-            // Assign Keycloak realm role
+            // Keycloak authorization source of truth: assign realm role after app-level creation
             keycloakAdminService.assignRealmRole(keycloakId, "PATIENT");
 
             logger.logAction("PATIENT_CREATED", keycloakId, Map.of(
@@ -122,11 +131,12 @@ public class UserController {
         }
     }
 
-    // --------------------------------------------------------------
-    //  Create Doctor (first-time onboarding)
-    // --------------------------------------------------------------
+    /**
+     * First-time onboarding: creates a doctor record and assigns the Keycloak DOCTOR role.
+     *
+     * <p>Requires the JWT claim "selected_role" to be DOCTOR.</p>
+     */
     @PostMapping("/doctor")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> createDoctor(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateDoctorDTO dto) {
@@ -167,14 +177,15 @@ public class UserController {
         }
     }
 
-    // --------------------------------------------------------------
-    //  Get patient data with encrypted symmetric key
-    // --------------------------------------------------------------
+    /**
+     * Returns encrypted patient data for a requester (patient/doctor) if allowed by access rules.
+     * The server returns encrypted fields and does not decrypt.
+     */
     @GetMapping("/patient/{patientId}/data")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getPatientData(
             @AuthenticationPrincipal Jwt jwt,
-            @PathVariable String patientId) {
+            @PathVariable String patientId
+    ) {
         String keycloakId = jwt.getSubject();
         logger.logApiRequest("GET", "/api/patient/" + patientId + "/data", keycloakId);
 

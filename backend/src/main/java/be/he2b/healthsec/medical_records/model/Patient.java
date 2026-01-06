@@ -20,6 +20,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Patient profile linked 1:1 to {@link User} (shared primary key).
+ *
+ * <p>Patient identity fields are stored encrypted (bytea) to prevent enumeration via DB access.
+ * Decryption is client-side using the patient's AES key.</p>
+ */
 @Entity
 @Table(name = "patients")
 @Getter
@@ -31,56 +37,25 @@ public class Patient {
 
     @Id
     @Column(columnDefinition = "uuid")
-    private UUID id; // même id que User
+    private UUID id;
 
     @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @MapsId
     @JoinColumn(name = "id")
     private User user;
     
-    /**
-     * SÉCURITÉ: Prénom du patient chiffré avec sa clé AES.
-     * Les prénoms des patients sont chiffrés pour empêcher l'énumération
-     * via accès direct à la base de données.
-     * User.firstName peut être laissé NULL ou contenir une valeur générique.
-     */
     @Column(name = "first_name_enc", nullable = false, columnDefinition = "bytea")
     private byte[] firstNameEnc;
-    
-    /**
-     * SÉCURITÉ: Nom du patient chiffré avec sa clé AES.
-     * Les noms des patients sont chiffrés pour empêcher l'énumération
-     * via accès direct à la base de données.
-     * User.lastName peut être laissé NULL ou contenir une valeur générique.
-     */
+
     @Column(name = "last_name_enc", nullable = false, columnDefinition = "bytea")
     private byte[] lastNameEnc;
-    
-    /**
-     * SÉCURITÉ: Email du patient chiffré avec sa clé AES.
-     * User.email doit être laissé NULL pour les patients.
-     */
+
     @Column(name = "email_enc", nullable = false, columnDefinition = "bytea")
     private byte[] emailEnc;
     
-    /**
-     * Date de naissance chiffrée avec la clé AES du patient.
-     */
     @Column(name = "dob_enc", nullable = false, columnDefinition = "bytea")
     private byte[] dateOfBirthEnc;
-        //important à bien comprendre
 
-    /**
-     * NOTE: La clé symétrique AES du patient n'est PAS stockée ici.
-     * Elle est stockée uniquement dans PatientDoctor.encryptedSymmetricKeyForDoctor
-     * quand un médecin est autorisé, chiffrée avec la clé publique RSA du médecin.
-     * Le patient garde sa clé AES dans le localStorage côté client.
-     * Si le patient veut accéder à ses données depuis un autre appareil,
-     * il doit utiliser sa clé privée RSA pour déchiffrer la clé AES stockée
-     * dans PatientDoctor (ou implémenter un système de récupération sécurisé).
-     */
-
-    // Un patient a plusieurs liens PatientDoctor
     @Builder.Default
     @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PatientDoctor> doctorLinks = new HashSet<>();

@@ -11,11 +11,10 @@ import be.he2b.healthsec.medical_records.logging.LoggingService;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Service de rate limiting pour protéger contre les attaques par force brute
- * et les abus d'API
- * 
- * SECURITY: Implémentation de la recommandation du rapport de sécurité (Question 10)
- * Limite le nombre de requêtes par utilisateur pour détecter les comportements malveillants
+ * In-memory rate limiting service.
+ *
+ * <p>Protects the application against brute-force attacks and API abuse by
+ * limiting the number of requests per user and per request type.</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -23,30 +22,31 @@ public class RateLimitService {
 
     private final LoggingService logger;
 
+    /** Per-minute limits per request type */
+    private static final int MAX_REQUESTS_PER_MINUTE = 60;
+    private static final int MAX_FILE_UPLOADS_PER_MINUTE = 10;
+
     /**
-     * Limites par type d'opération
-     */
-    private static final int MAX_REQUESTS_PER_MINUTE = 60; // Requêtes générales
-    private static final int MAX_FILE_UPLOADS_PER_MINUTE = 10; // Uploads de fichiers
-    
-    /**
-     * Stockage en mémoire des compteurs par utilisateur
-     * Format: userId -> RequestCounter
+     * In-memory counters indexed by user identifier.
+     * userId -> RequestCounter
      */
     private final Map<String, RequestCounter> generalRequestCounters = new ConcurrentHashMap<>();
     private final Map<String, RequestCounter> fileUploadCounters = new ConcurrentHashMap<>();
 
     /**
-     * Vérifie si une requête est autorisée pour un utilisateur
-     * 
-     * @param userId ID de l'utilisateur (keycloakId)
-     * @param requestType Type de requête (GENERAL, FILE_UPLOAD)
-     * @return true si la requête est autorisée, false si rate limit dépassé
+     * Checks whether a request is allowed for a given user and request type.
+     *
+     * @param userId identifier of the authenticated user
+     * @param requestType request category (GENERAL or FILE_UPLOAD)
+     * @return {@code true} if the request is allowed, {@code false} if the limit is exceeded
      */
     public boolean isRequestAllowed(String userId, RequestType requestType) {
         if (userId == null) {
-            return true; // Pas de limitation pour les requêtes non authentifiées
+            // Defensive fail-closed: this service expects authenticated requests only.
+            logger.logSecurityEvent("RATE_LIMIT_UNEXPECTED_ANONYMOUS", "anonymous", "HIGH", Map.of("requestType", requestType.name()));
+            return false;
         }
+
 
         Map<String, RequestCounter> counters;
         int maxRequests;
@@ -84,11 +84,11 @@ public class RateLimitService {
     }
 
     /**
-     * Enregistre une tentative de requête après rate limiting
-     * 
-     * @param userId ID de l'utilisateur
-     * @param requestType Type de requête
-     * @param allowed Si la requête a été autorisée
+     * Records a blocked request after rate-limit evaluation.
+     *
+     * @param userId identifier of the user
+     * @param requestType request category
+     * @param allowed whether the request was allowed
      */
     public void recordRequest(String userId, RequestType requestType, boolean allowed) {
         if (!allowed) {
@@ -101,14 +101,16 @@ public class RateLimitService {
     }
 
     /**
-     * Réinitialise les compteurs toutes les minutes
-     * Scheduled task exécuté automatiquement
+     * Resets all rate-limit counters every minute.
+     *
+     * <p>This scheduled task enforces a fixed per-minute window and clears
+     * all in-memory counters.</p>
      */
-    @Scheduled(fixedDelay = 60000) // 60 secondes
+    @Scheduled(fixedDelay = 60000)
     public void resetCounters() {
         int totalGeneral = generalRequestCounters.size();
         int totalUploads = fileUploadCounters.size();
-        
+
         generalRequestCounters.clear();
         fileUploadCounters.clear();
 
@@ -125,15 +127,15 @@ public class RateLimitService {
     }
 
     /**
-     * Types de requêtes pour le rate limiting
+     * Supported request categories for rate limiting.
      */
     public enum RequestType {
-        GENERAL,      // Requêtes API générales
-        FILE_UPLOAD   // Uploads de fichiers médicaux
+        GENERAL,      // General API requests
+        FILE_UPLOAD   // Medical file uploads
     }
 
     /**
-     * Compteur thread-safe pour les requêtes
+     * Thread-safe per-user request counter.
      */
     private static class RequestCounter {
         private final AtomicInteger count = new AtomicInteger(0);
@@ -148,14 +150,16 @@ public class RateLimitService {
     }
 
     /**
-     * Obtient le nombre actuel de requêtes pour un utilisateur
-     * (Utile pour le debugging et les tests)
+     * Returns the current request count for a user.
+     *
+     * <p>Intended for debugging and testing purposes only.</p>
      */
     public int getCurrentCount(String userId, RequestType requestType) {
-        Map<String, RequestCounter> counters = requestType == RequestType.FILE_UPLOAD 
-            ? fileUploadCounters 
-            : generalRequestCounters;
-        
+        Map<String, RequestCounter> counters =
+            requestType == RequestType.FILE_UPLOAD
+                ? fileUploadCounters
+                : generalRequestCounters;
+
         RequestCounter counter = counters.get(userId);
         return counter != null ? counter.get() : 0;
     }

@@ -4,16 +4,19 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * DTO pour retourner les informations d'un médecin (pour identification).
- * Ces informations sont nécessaires pour qu'un patient puisse identifier un médecin
- * avant de l'ajouter à sa liste.
+ * Doctor metadata returned to patients for identification/search.
+ *
+ * <p>Fields are intentionally cleartext to allow discovery, plus the doctor's RSA public key
+ * used by patients to wrap shared keys.</p>
  */
 @Getter @Setter
 public class DoctorInfoDTO {
+    /** Doctor identifier */
     private String doctorId;
-    private String firstName; // Prénom en clair
-    private String lastName; // Nom en clair
-    private String medicalOrganization; // Organisation médicale en clair
-    private String publicKeyPEM; // Clé publique RSA du médecin
+    private String firstName; 
+    private String lastName;
+    private String medicalOrganization;
+    /** Doctor RSA public key */
+    private String publicKeyPEM;
 }
 

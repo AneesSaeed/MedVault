@@ -3,6 +3,12 @@ package be.he2b.healthsec.medical_records.dto;
 import lombok.Builder;
 import lombok.Getter;
 
+/**
+ * "Me" endpoint response.
+ *
+ * <p>Doctors receive cleartext identity fields. Patients receive encrypted identity fields plus
+ * their AES key wrapped for themselves (Base64).</p>
+ */
 @Getter
 @Builder
 public class MeResponseDTO {
@@ -16,6 +22,6 @@ public class MeResponseDTO {
     private String firstNameEncBase64;
     private String lastNameEncBase64;
 
-    // patient: AES key wrapped for requesting user (patient himself here)
+    // AES key wrapped for requesting user
     private String symmetricKeyEncBase64;
 }

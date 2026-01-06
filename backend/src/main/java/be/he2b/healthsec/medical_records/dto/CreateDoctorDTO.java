@@ -5,46 +5,33 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Doctor onboarding payload.
+ *
+ * <p>Doctor identity fields are stored in cleartext so patients can search and identify doctors.
+ * The public RSA key is used to wrap patient symmetric keys when a doctor is appointed.</p>
+ */
 @Getter @Setter
 public class CreateDoctorDTO {
     
-    /**
-     * SÉCURITÉ: Toutes les données du médecin sont stockées EN CLAIR
-     * car les médecins sont "découvrables" par les patients pour l'identification.
-     */
-    
-    /**
-     * Prénom du médecin (en clair).
-     */
+    /** Doctor first name (cleartext). */
     @NotBlank(message = "firstName is required")
     private String firstName;
     
-    /**
-     * Nom du médecin (en clair).
-     */
+    /** Doctor last name (cleartext). */
     @NotBlank(message = "lastName is required")
     private String lastName;
     
-    /**
-     * Email du médecin (en clair).
-     */
+    /** Doctor email address (cleartext). */
     @Email(message = "email must be valid")
     @NotBlank(message = "email is required")
     private String email;
     
-    /**
-     * Organisation médicale (en clair).
-     * Les informations des médecins sont stockées en clair pour permettre
-     * aux patients de les identifier et de les rechercher.
-     */
+    /** Doctor medical organization (cleartext). */
     @NotBlank(message = "medicalOrganization is required")
     private String medicalOrganization;
     
-    /**
-     * Clé publique RSA de l'utilisateur en format PEM.
-     * Cette clé sera utilisée pour chiffrer la clé AES du patient
-     * lors du partage (dans PatientDoctor).
-     */
+    /** Doctor RSA public key (PEM). Used to wrap patient AES keys for sharing. */
     @NotBlank(message = "publicKeyPEM is required")
     private String publicKeyPEM;
 }

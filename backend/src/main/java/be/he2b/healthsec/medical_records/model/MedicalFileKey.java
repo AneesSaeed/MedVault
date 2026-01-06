@@ -15,6 +15,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Stores a per-recipient wrapped file key for a medical file.
+ *
+ * <p>The file is encrypted client-side with a symmetric key (K_file). This table stores K_file
+ * wrapped for each authorized recipient (patient / appointed doctor) using their RSA public key.</p>
+ */
 @Entity
 @Table(name = "medical_file_keys")
 @Getter
@@ -26,33 +32,20 @@ public class MedicalFileKey {
 
     /**
      * Composite primary key (e.g., fileId + recipientUserId).
-     * Must be an @Embeddable class.
      */
     @EmbeddedId
     private MedicalFileKeyId id;
 
-    /**
-     * FK to MedicalFile, and also part of the composite PK via @MapsId("fileId").
-     * Column in DB: file_id
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("fileId")
     @JoinColumn(name = "file_id", nullable = false)
     private MedicalFile file;
 
-    /**
-     * FK to User (recipient), also part of the composite PK via @MapsId("recipientUserId").
-     * Column in DB: recipient_user_id
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("recipientUserId")
     @JoinColumn(name = "recipient_user_id", nullable = false)
     private User recipientUser;
 
-    /**
-     * Symmetric file key (K_file) encrypted/wrapped with the recipient's RSA public key.
-     * Stored as bytes in Postgres bytea.
-     */
     @Column(name = "wrapped_file_key_enc", columnDefinition = "bytea", nullable = false)
     private byte[] wrappedFileKeyEnc;
 }

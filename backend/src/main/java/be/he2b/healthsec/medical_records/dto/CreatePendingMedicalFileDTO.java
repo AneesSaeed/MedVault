@@ -6,8 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO pour créer une demande d'ajout de fichier médical par un docteur.
- * Toutes les données binaires sont en Base64.
+ * Doctor -> patient file request payload.
+ *
+ * <p>All fields are Base64-encoded. Encrypted fields remain encrypted end-to-end
+ * (server stores/forwards them and does not decrypt).</p>
  */
 @Data
 @NoArgsConstructor
@@ -19,12 +21,15 @@ public class CreatePendingMedicalFileDTO {
     @NotBlank(message = "contentEncBase64 is required")
     private String contentEncBase64;
 
+     /** IV/nonce used for encryption, Base64-encoded. */
     @NotBlank(message = "ivBase64 is required")
     private String ivBase64;
 
+     /** Temporary symmetric key wrapped for the patient, Base64-encoded. */
     @NotBlank(message = "wrappedTempKeyForPatientBase64 is required")
     private String wrappedTempKeyForPatientBase64;
 
+    /** Encrypted MIME type, Base64-encoded. */
     @NotBlank(message = "mimeTypeEncBase64 is required")
     private String mimeTypeEncBase64;
 }

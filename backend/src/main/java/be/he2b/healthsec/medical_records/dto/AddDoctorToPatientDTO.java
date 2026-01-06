@@ -5,24 +5,19 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * DTO pour ajouter un médecin à la liste des médecins d'un patient.
- * 
- * Selon l'énoncé : "A patient can add or remove a doctor to his list of appointed doctors."
- * Note: Les informations du médecin (nom, prénom, organisation) sont en clair,
- * donc pas besoin de les chiffrer pour le patient.
+ * Request payload used by a patient to appoint a doctor.
+ *
+ * <p>Contains the doctor identifier and the patient's symmetric key wrapped for that doctor
+ * (encrypted with the doctor's RSA public key and base64-encoded). The backend stores/transmits
+ * this value and does not decrypt it.</p>
  */
 @Getter @Setter
 public class AddDoctorToPatientDTO {
-    /**
-     * ID du médecin à ajouter
-     */
+    /** Doctor identifier to appoint. */
     @NotBlank(message = "doctorId is required")
     private String doctorId;
     
-    /**
-     * Clé AES du patient chiffrée avec la clé publique RSA du médecin (en base64).
-     * Cette clé permet au médecin de déchiffrer les dossiers médicaux du patient.
-     */
+    /** Patient AES key encrypted for the doctor (RSA-wrapped), base64-encoded. */
     @NotBlank(message = "encryptedPatientAESKeyBase64 is required")
     private String encryptedPatientAESKeyBase64;
 }
