@@ -92,7 +92,7 @@ docker-compose up -d
 |---------|-----|-------------|
 | **HealthSec App** | https://localhost | Create account |
 | **Kibana Logs** | https://localhost:5601 | username = `elastic` /  password = `supersecret` |
-| **Database UI** | http://localhost:5050 | `PostgreSQL` / `app` / `app` |
+| **Database UI** | http://localhost:5050 | system `PostgreSQL` / `app` / `app` / db `mydb`|
 
 ---
 ## Usage
