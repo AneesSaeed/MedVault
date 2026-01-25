@@ -2496,17 +2496,6 @@
       }
     },
     {
-      "id": "b6239990-7166-40b5-af67-ab23ff37e711",
-      "alias": "recaptcha",
-      "config": {
-        "action": "register",
-        "recaptcha.v3": "false",
-        "secret.key": "6Leoux0sAAAAALlX7v6_tJroMn4Thf0gGNkTvSbV",
-        "useRecaptchaNet": "false",
-        "site.key": "6Leoux0sAAAAAGpnHqlVRI60upBHD1U4Bp8vtwpZ"
-      }
-    },
-    {
       "id": "e70ace43-9109-4a47-be0c-072e2690d57a",
       "alias": "review profile config",
       "config": {
