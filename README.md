@@ -1,18 +1,31 @@
-# HealthSec - Secure Medical Records Management System
+# MedVault – Secure Medical Records Management System
 
-**Authors:**
-- 62294 - SAEED Anees
-- 63009 - EL Hichou Abderrahman
-- 60287 - Ilias Abouchouar
+Academic project
+Security course (5SEC1A) – Academic year 2025–2026
 
 ---
 
 ## Overview
 
-HealthSec is a web application for managing medical records securely.
-It allows **patients** and **doctors** to create accounts, share medical records, and access them.
+MedVault is a secure client–server web application for managing sensitive medical records.
+The system allows **patients** and **doctors** to create accounts, share medical records, and
+access them under strict security constraints.
 
-The project is fully containerized and runs with Docker Compose.
+The project is designed under a **non-trusted server assumption**, meaning the server must
+never have access to sensitive data in plaintext. Security is the primary evaluation criterion.
+
+The application is fully containerized and runs using **Docker Compose**.
+
+---
+
+## Key Security Principles
+
+- End-to-end confidentiality of medical records
+- No plaintext storage of sensitive data on the server
+- Hardened authentication and access control
+- Explicit patient approval for delegated actions
+- Secure handling of credentials and cryptographic material
+- Monitoring and logging for security analysis
 
 ---
 
@@ -28,8 +41,8 @@ The project is fully containerized and runs with Docker Compose.
 ### 1. Clone the Project
 
 ```bash
-git clone git@git.esi-bru.be:62294/secu-project.git
-cd secu-project
+git clone git@github.com:AneesSaeed/MedVault.git
+cd MedVault
 ```
 
 ### 2. Start the Application
