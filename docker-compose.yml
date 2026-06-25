@@ -101,85 +101,6 @@ services:
       # Read-only: Keycloak consumes cert material, cannot modify it
       - internal_certs:/certs/internal:ro
     restart: always
-
-  backend:
-    build: ./backend
-    container_name: spring_backend
-    environment:
-      DB_HOST: db
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
-      # Issuer must match tokens coming from the browser-facing URL
-      KEYCLOAK_ISSUER_URI: https://localhost/auth/realms/health-realm
-      # JWKS fetched over internal HTTPS from Keycloak container name
-      KEYCLOAK_JWKS_URI: https://keycloak:8443/auth/realms/health-realm/protocol/openid-connect/certs
-
-      # After adding roles attribute to keycloak
-      KEYCLOAK_ADMIN_BASE_URL: https://keycloak:8443/auth
-      KEYCLOAK_ADMIN_REALM: health-realm
-      KEYCLOAK_ADMIN_CLIENT_ID: backend-client
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET}
-
-      # JVM truststore includes our internal CA,
-      # allowing TLS verification of https://keycloak:8443
-      # SECURITY NOTE: Password "secret" is for DEVELOPMENT ONLY (matches internal-certs/generate-internal-certs.sh)
-      JAVA_TOOL_OPTIONS: >-
-        -Djavax.net.ssl.trustStore=/certs/internal/truststore.jks
-        -Djavax.net.ssl.trustStorePassword=secret
-    volumes:
-      - internal_certs:/certs/internal:ro
-    depends_on:
-      internal_certs:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-      keycloak:
-        condition: service_started
-      # Ensure logstash is up before backend emits logs to it
-      logstash:
-        condition: service_healthy
-    # Only internal port, not published to host
-    expose:
-      - "8443"
-
-  angular:
-    image: node:20
-    container_name: angular_frontend
-    working_dir: /usr/src/app
-    ports:
-      - "4200:4200"
-    volumes:
-      - ./frontend:/usr/src/app
-      - /usr/src/app/node_modules
-    command: >
-      sh -c "npm install &&
-             npm run start"
-    depends_on:
-      - backend
-      - keycloak
-
-  nginx:
-    build: ./nginx 
-    container_name: nginx
-    ports:
-      # Only nginx is exposed to host on 443
-      - "443:443"
-    volumes:
-      # Edge TLS certs (localhost)
-      - ./nginx/certs:/certs 
-      # Internal CA (read-only) for upstream verification
-      - internal_certs:/certs/internal:ro
-    depends_on:
-      internal_certs:
-        condition: service_healthy
-      angular:
-        condition: service_started
-      backend:
-        condition: service_started
-      keycloak:
-        condition: service_started
   
   # === ELK STACK FOR LOGGING ===
   elasticsearch:
@@ -322,6 +243,86 @@ services:
         condition: service_healthy
     restart: "no"
 
+
+  backend:
+    build: ./backend
+    container_name: spring_backend
+    environment:
+      DB_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # Issuer must match tokens coming from the browser-facing URL
+      KEYCLOAK_ISSUER_URI: https://localhost/auth/realms/health-realm
+      # JWKS fetched over internal HTTPS from Keycloak container name
+      KEYCLOAK_JWKS_URI: https://keycloak:8443/auth/realms/health-realm/protocol/openid-connect/certs
+
+      # After adding roles attribute to keycloak
+      KEYCLOAK_ADMIN_BASE_URL: https://keycloak:8443/auth
+      KEYCLOAK_ADMIN_REALM: health-realm
+      KEYCLOAK_ADMIN_CLIENT_ID: backend-client
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET}
+
+      # JVM truststore includes our internal CA,
+      # allowing TLS verification of https://keycloak:8443
+      # SECURITY NOTE: Password "secret" is for DEVELOPMENT ONLY (matches internal-certs/generate-internal-certs.sh)
+      JAVA_TOOL_OPTIONS: >-
+        -Djavax.net.ssl.trustStore=/certs/internal/truststore.jks
+        -Djavax.net.ssl.trustStorePassword=secret
+    volumes:
+      - internal_certs:/certs/internal:ro
+    depends_on:
+      internal_certs:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      # Ensure logstash is up before backend emits logs to it
+      logstash:
+        condition: service_healthy
+    # Only internal port, not published to host
+    expose:
+      - "8443"
+
+  angular:
+    image: node:20
+    container_name: angular_frontend
+    working_dir: /usr/src/app
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    command: >
+      sh -c "npm install &&
+             npm run start"
+    depends_on:
+      - backend
+      - keycloak
+
+  nginx:
+    build: ./nginx 
+    container_name: nginx
+    ports:
+      # Only nginx is exposed to host on 443
+      - "443:443"
+    volumes:
+      # Edge TLS certs (localhost)
+      - ./nginx/certs:/certs 
+      # Internal CA (read-only) for upstream verification
+      - internal_certs:/certs/internal:ro
+    depends_on:
+      internal_certs:
+        condition: service_healthy
+      angular:
+        condition: service_started
+      backend:
+        condition: service_started
+      keycloak:
+        condition: service_started
+        
 volumes:
   db_data:
   keycloak_db_data:
